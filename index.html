@@ -3,26 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShortBlue - 編集者一覧</title>
+    <title>Shorts Match | 編集者マッチング</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
-<body class="bg-slate-50 p-6 md:p-12">
+<body class="bg-slate-50 min-h-screen">
 
-    <div class="max-w-5xl mx-auto">
-        <div class="flex items-center justify-between mb-10">
-            <h1 class="text-3xl font-extrabold text-cyan-600 tracking-tight">ShortBlue <span class="text-slate-400 font-light text-xl">編集者リスト</span></h1>
-            <div id="status-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-500">
-                接続確認中...
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-cyan-100 p-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-play text-white"></i>
+                </div>
+                <span class="text-2xl font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">Shorts Match</span>
+            </div>
+            <div id="status-badge" class="px-4 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200">
+                CONNECTING...
             </div>
         </div>
-        
+    </header>
+
+    <section class="py-16 px-4 text-center">
+        <h1 class="text-4xl md:text-6xl font-extrabold text-slate-900 mb-6 leading-tight">
+            プロの編集者を<br>
+            <span class="bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">使用ソフトから探す</span>
+        </h1>
+        <p class="text-slate-500 text-lg max-w-2xl mx-auto">
+            VTuber・YouTuberの活動を加速させる、高品質なショート動画編集マッチング。
+        </p>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 pb-24">
         <div id="editor-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="animate-pulse bg-white h-64 rounded-3xl border border-slate-200"></div>
+            <div class="animate-pulse bg-white h-64 rounded-3xl border border-slate-200"></div>
+            <div class="animate-pulse bg-white h-64 rounded-3xl border border-slate-200"></div>
+        </div>
+
+        <div class="mt-20 bg-gradient-to-br from-cyan-600 to-blue-700 rounded-[2.5rem] p-12 text-center text-white shadow-2xl shadow-cyan-200/50">
+            <h2 class="text-3xl font-bold mb-4">あなたも編集者として登録しませんか？</h2>
+            <p class="mb-8 text-cyan-50 opacity-90 text-lg leading-relaxed">手数料は10%のみ。今すぐスキルを活かして活動を始めましょう。</p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button class="bg-white text-cyan-600 px-10 py-4 rounded-full font-bold hover:shadow-xl hover:scale-105 transition-all text-lg">無料で始める</button>
+                <button class="bg-transparent border-2 border-white text-white px-10 py-4 rounded-full font-bold hover:bg-white/10 transition-all text-lg">詳しく見る</button>
             </div>
-    </div>
+        </div>
+    </main>
 
     <script>
-        // 竹上さんの接続設定
         const SUPABASE_URL = 'https://dwmgwdhunvanrsautvtj.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
 
@@ -37,52 +66,57 @@
                 if (error) throw error;
 
                 if (!data || data.length === 0) {
-                    statusBadge.innerText = 'データなし';
+                    statusBadge.innerText = 'NO DATA';
                     listEl.innerHTML = '<p class="col-span-full text-center text-slate-400 py-20">現在、登録されている編集者はいません。</p>';
                     return;
                 }
 
                 statusBadge.innerText = `ONLINE: ${data.length}名`;
-                statusBadge.classList.replace('bg-slate-200', 'bg-emerald-100');
-                statusBadge.classList.replace('text-slate-500', 'text-emerald-600');
+                statusBadge.className = "px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100";
                 
-                // カードの生成
-                listEl.innerHTML = data.map(editor => `
-                    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                        <div class="h-2 bg-cyan-500"></div>
-                        <div class="p-6">
-                            <div class="flex items-center space-x-4 mb-4">
-                                <div class="w-12 h-12 bg-cyan-100 rounded-full flex items-center justify-center text-cyan-600 font-bold text-xl">
-                                    ${(editor.name || '？').charAt(0)}
+                listEl.innerHTML = data.map(editor => {
+                    const name = editor.name || '名前未設定';
+                    const tools = editor.tools || '未設定';
+                    const os = editor.os || 'Windows/Mac';
+                    const price = editor.price || 0;
+                    const initial = name.charAt(0);
+
+                    return `
+                        <div class="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group">
+                            <div class="h-2 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
+                            <div class="p-8">
+                                <div class="flex items-center gap-5 mb-6">
+                                    <div class="w-16 h-16 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl flex items-center justify-center text-cyan-600 font-black text-2xl shadow-inner">
+                                        ${initial}
+                                    </div>
+                                    <div>
+                                        <h3 class="text-xl font-bold text-slate-800">${name}</h3>
+                                        <div class="flex gap-2 mt-1">
+                                            <span class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded-md uppercase tracking-wider">${os}</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h2 class="text-xl font-bold text-slate-800">${editor.name || '名前未設定'}</h2>
-                                    <p class="text-xs text-slate-400">ID: ${editor.id}</p>
-                                </div>
-                            </div>
-                            
-                            <div class="space-y-3 border-t border-slate-50 pt-4">
-                                <div class="flex items-center text-sm">
-                                    <span class="text-slate-400 w-20">使用ソフト</span>
-                                    <span class="text-slate-700 font-medium">${editor.tools || '未登録'}</span>
-                                </div>
-                                <div class="flex items-center text-sm">
-                                    <span class="text-slate-400 w-20">対応OS</span>
-                                    <span class="px-2 py-0.5 bg-slate-100 rounded text-xs text-slate-600">${editor.os || 'Windows/Mac'}</span>
-                                </div>
-                                <div class="mt-4 pt-4 border-t border-slate-50 flex justify-between items-end">
-                                    <span class="text-xs text-slate-400">制作単価目安</span>
-                                    <span class="text-lg font-bold text-cyan-600">¥${Number(editor.price || 0).toLocaleString()}〜</span>
+                                
+                                <div class="space-y-4 pt-4 border-t border-slate-50">
+                                    <div class="flex justify-between items-center text-sm">
+                                        <span class="text-slate-400">使用ソフト</span>
+                                        <span class="text-slate-800 font-bold bg-cyan-50 px-3 py-1 rounded-lg">${tools}</span>
+                                    </div>
+                                    <div class="flex justify-between items-end pt-2">
+                                        <div class="text-xs text-slate-400 font-medium">制作単価目安</div>
+                                        <div class="text-2xl font-black text-cyan-600">¥${Number(price).toLocaleString()}<span class="text-sm font-bold">〜</span></div>
+                                    </div>
+                                    <button class="w-full mt-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:shadow-cyan-300 hover:scale-[1.02] transition-all">
+                                        相談する
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
 
             } catch (err) {
                 statusBadge.innerText = 'ERROR';
-                statusBadge.classList.replace('bg-slate-200', 'bg-red-100');
-                statusBadge.classList.replace('text-slate-500', 'text-red-600');
                 console.error(err);
             }
         }
