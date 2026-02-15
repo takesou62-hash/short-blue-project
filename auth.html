@@ -77,16 +77,17 @@
         </div>
     </main>
 
-    <script>
+   <script>
         const SUPABASE_URL = 'https://dwmgwdhunvanrsautvtj.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 状態監視
+        // 状態監視：ログインしているかどうかをチェック
         sb.auth.onAuthStateChanged((event, session) => {
             if (session) { loadMypage(session.user); } else { showAuth(); }
         });
 
+        // ログインと新規登録の見た目を切り替える
         function switchTab(tab) {
             const isLogin = tab === 'login';
             document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
@@ -95,6 +96,7 @@
             document.getElementById('tabRegister').className = !isLogin ? 'flex-1 py-2.5 rounded-xl font-bold text-sm bg-white text-slate-800 shadow-sm' : 'flex-1 py-2.5 rounded-xl font-bold text-sm text-slate-500';
         }
 
+        // ログイン処理
         async function handleLogin() {
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
@@ -105,6 +107,7 @@
             if (error) { errEl.textContent = '❌ ' + error.message; errEl.classList.remove('hidden'); }
         }
 
+        // 新規登録処理
         async function handleRegister() {
             const email = document.getElementById('regEmail').value.trim();
             const password = document.getElementById('regPassword').value;
@@ -117,11 +120,13 @@
             const { data, error } = await sb.auth.signUp({ email, password });
             if (error) { errEl.textContent = '❌ ' + error.message; errEl.classList.remove('hidden'); } 
             else if (data.user) {
+                // 登録と同時に名前をデータベースに保存
                 await sb.from('editors').upsert({ id: data.user.id, name: name });
                 alert('登録が完了しました！');
             }
         }
 
+        // マイページのデータを読み込む
         async function loadMypage(user) {
             showMypage();
             document.getElementById('mypageEmail').textContent = user.email;
@@ -133,6 +138,7 @@
             }
         }
 
+        // プロフィールを保存する
         async function handleUpdate() {
             const statusEl = document.getElementById('mypageStatus');
             statusEl.className = 'text-center font-bold text-sm text-cyan-600';
@@ -142,4 +148,25 @@
             const { data: { user } } = await sb.auth.getUser();
             const updates = {
                 id: user.id,
-                name: document.getElementById('mp
+                name: document.getElementById('mpName').value.trim(),
+                price: document.getElementById('mpPrice').value.trim()
+            };
+
+            const { error } = await sb.from('editors').upsert(updates, { onConflict: 'id' });
+            if (error) {
+                statusEl.textContent = '❌ エラー: ' + error.message;
+                statusEl.classList.add('text-red-500');
+            } else {
+                statusEl.textContent = '✅ 保存しました！';
+                statusEl.classList.add('text-emerald-500');
+                document.getElementById('mypageName').textContent = updates.name;
+                setTimeout(() => statusEl.classList.add('hidden'), 3000);
+            }
+        }
+
+        async function handleLogout() { await sb.auth.signOut(); }
+        function showAuth() { document.getElementById('authSection').classList.remove('hidden'); document.getElementById('mypageSection').classList.add('hidden'); }
+        function showMypage() { document.getElementById('authSection').classList.add('hidden'); document.getElementById('mypageSection').classList.remove('hidden'); }
+    </script>
+</body>
+</html>
