@@ -17,68 +17,96 @@
 </head>
 <body class="gradient-bg min-h-screen flex items-center justify-center p-4">
 
-    <div id="authSection" class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 fade-in">
+    <div id="authSection" class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 transition-all duration-500">
         <h1 class="text-3xl font-black text-center mb-8 gradient-text tracking-tighter">Shorts Match</h1>
         <div class="space-y-4">
-            <input type="email" id="email" placeholder="メールアドレス" class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
-            <input type="password" id="password" placeholder="パスワード" class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
-            <div id="authError" class="text-red-500 text-sm hidden"></div>
+            <input type="email" id="email" placeholder="メールアドレス" class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-cyan-500 outline-none">
+            <input type="password" id="password" placeholder="パスワード" class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-cyan-500 outline-none">
+            <div id="authError" class="text-red-500 text-sm hidden font-bold text-center"></div>
             <button onclick="handleAuth()" id="authBtn" class="w-full py-4 rounded-2xl text-white font-bold gradient-btn shadow-lg shadow-cyan-200 hover:scale-[1.02] transition-all">ログイン / 新規登録</button>
         </div>
+        <p class="text-center text-xs text-slate-400 mt-6">アカウントがない場合は入力した情報で新規登録されます</p>
     </div>
 
-    <div id="mypageSection" class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-8 hidden fade-in">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-bold text-slate-800">プロフィール編集</h2>
-            <button onclick="handleLogout()" class="text-slate-400 text-sm hover:text-red-500">ログアウト</button>
+    <div id="mypageSection" class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-8 hidden transition-all duration-500">
+        <div class="flex justify-between items-center mb-8 border-b pb-4">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-800">プロフィール編集</h2>
+                <p id="userEmailDisplay" class="text-xs text-slate-400"></p>
+            </div>
+            <button onclick="handleLogout()" class="text-slate-400 text-sm hover:text-red-500 font-bold transition-colors">ログアウト</button>
         </div>
+        
         <div class="space-y-6">
-            <input type="text" id="name" placeholder="表示名" class="w-full p-4 bg-slate-50 rounded-2xl border">
-            <input type="text" id="tools" placeholder="使用ソフト" class="w-full p-4 bg-slate-50 rounded-2xl border">
-            <input type="number" id="price" placeholder="単価目安" class="w-full p-4 bg-slate-50 rounded-2xl border">
-            <div id="statusMsg" class="text-emerald-500 text-sm hidden text-center"></div>
-            <button onclick="saveProfile()" class="w-full py-4 rounded-2xl text-white font-bold gradient-btn">設定を保存する</button>
+            <div>
+                <label class="block text-sm font-bold text-slate-500 mb-2">表示名</label>
+                <input type="text" id="name" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:border-cyan-500">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-500 mb-2">使用ソフト</label>
+                <input type="text" id="tools" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:border-cyan-500">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-slate-500 mb-2">制作単価目安 (¥)</label>
+                <input type="number" id="price" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:border-cyan-500">
+            </div>
+            <div id="statusMsg" class="text-emerald-500 text-sm hidden text-center font-bold"></div>
+            <button onclick="saveProfile()" class="w-full py-4 rounded-2xl text-white font-bold gradient-btn shadow-lg shadow-cyan-200 transition-all">設定を保存する</button>
         </div>
     </div>
 
     <script>
+        // Supabase接続設定
         const SUPABASE_URL = 'https://dwmgwdhunvanrsautvtj.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // ログイン状態監視
+        // 状態監視
         sb.auth.onAuthStateChanged((event, session) => {
             if (session) {
                 showMypage();
+                document.getElementById('userEmailDisplay').textContent = session.user.email;
                 loadProfile(session.user.id);
             } else {
                 showAuth();
             }
         });
 
+        // ログイン・登録処理
         async function handleAuth() {
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const errEl = document.getElementById('authError');
             
-            // まずはログイン試行
-            let { data, error } = await sb.auth.signInWithPassword({ email, password });
-            
-            // ユーザーがいなければ新規登録
-            if (error && error.message.includes('Invalid login credentials')) {
-                const signup = await sb.auth.signUp({ email, password });
-                error = signup.error;
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!email || !password) {
+                errEl.textContent = '⚠️ メールとパスワードを入力してください';
+                errEl.classList.remove('hidden');
+                return;
             }
 
+            errEl.classList.add('hidden');
+            
+            // ログイン試行
+            let { data, error } = await sb.auth.signInWithPassword({ email, password });
+            
+            // ユーザーがいない等のエラー時は新規登録
             if (error) {
-                const errEl = document.getElementById('authError');
-                errEl.textContent = '❌ ' + error.message;
-                errEl.classList.remove('hidden');
+                const signup = await sb.auth.signUp({ email, password });
+                if (signup.error) {
+                    errEl.textContent = '❌ ' + signup.error.message;
+                    errEl.classList.remove('hidden');
+                } else {
+                    alert('登録しました！ログイン状態に切り替わります。');
+                }
             }
         }
 
         async function loadProfile(uid) {
-            // SQLで設定したキャストに合わせて text で比較
-            const { data } = await sb.from('editors').select('*').filter('id::text', 'eq', uid).single();
+            // 型エラー回避のための text キャスト比較
+            const { data } = await sb.from('editors').select('*').filter('id::text', 'eq', uid).maybeSingle();
             if (data) {
                 document.getElementById('name').value = data.name || '';
                 document.getElementById('tools').value = data.tools || '';
@@ -94,17 +122,23 @@
                 price: document.getElementById('price').value,
             };
 
-            const { error } = await sb.from('editors').update(updates).filter('id::text', 'eq', user.id);
+            const { error } = await sb.from('editors').upsert({
+                id: user.id, // ここでユーザーIDを紐付け
+                ...updates,
+                updated_at: new Date()
+            }, { onConflict: 'id' });
             
             const msgEl = document.getElementById('statusMsg');
             if (!error) {
-                msgEl.textContent = '✅ 保存しました！';
+                msgEl.textContent = '✅ 保存が完了しました！';
                 msgEl.classList.remove('hidden');
                 setTimeout(() => msgEl.classList.add('hidden'), 3000);
+            } else {
+                alert('保存失敗: ' + error.message);
             }
         }
 
-        async function handleLogout() { await sb.auth.signOut(); }
+        function handleLogout() { sb.auth.signOut(); }
         function showAuth() { document.getElementById('authSection').classList.remove('hidden'); document.getElementById('mypageSection').classList.add('hidden'); }
         function showMypage() { document.getElementById('authSection').classList.add('hidden'); document.getElementById('mypageSection').classList.remove('hidden'); }
     </script>
