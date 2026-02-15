@@ -249,7 +249,7 @@
         // ===== カード生成 =====
         function createEditorCard(e) {
             const os      = e.os || 'Windows';
-            const swList  = Array.isArray(e.software) ? e.software : [];
+            const swList  = Array.isArray(e.tools) ? e.tools : (typeof e.tools === 'string' ? e.tools.split(',').map(s => s.trim()) : []);
             const details = Array.isArray(e.software_details) ? e.software_details : [];
             const videos  = Array.isArray(e.sample_videos) ? e.sample_videos : [];
 
@@ -276,6 +276,8 @@
                 </div>` : '';
 
             const avatar = e.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(e.name)}`;
+            const osBadgeClass = os.toLowerCase() === 'mac' ? 'os-mac' : 'os-windows';
+            const osLabel      = os.toLowerCase() === 'mac' ? '🍎 Mac' : '🪟 Windows';
 
             return `
             <div class="editor-card" data-os="${os}" data-software="${swList.join(',')}">
@@ -285,12 +287,12 @@
                         <h3>${e.name}</h3>
                         <div class="specialty">${e.specialty || ''}</div>
                         <div class="rating">⭐ ${e.rating || '-'} • 経験 ${e.experience || '-'} • ${e.projects || 0}件の実績</div>
-                        <span class="os-badge os-${os.toLowerCase()}">${os === 'Mac' ? '🍎 Mac' : '🪟 Windows'}</span>
+                        <span class="os-badge ${osBadgeClass}">${osLabel}</span>
                     </div>
                 </div>
                 <div class="software-section">
                     <h4>使用可能なソフト</h4>
-                    <div class="software-tags">${swHTML}</div>
+                    <div class="software-tags">${swHTML || '<span style="color:#9ca3af;">未設定</span>'}</div>
                 </div>
                 <p style="margin:20px 0; color:#6b7280; line-height:1.6;">${e.description || ''}</p>
                 ${videoHTML}
@@ -377,9 +379,9 @@
             const cards = document.querySelectorAll('.editor-card');
             let count = 0;
             cards.forEach(card => {
-                const cardOS = card.getAttribute('data-os');
-                const cardSW = card.getAttribute('data-software').split(',');
-                const okOS   = selectedOS === 'all' || cardOS === selectedOS;
+                const cardOS = (card.getAttribute('data-os') || '').toLowerCase();
+                const cardSW = card.getAttribute('data-software').split(',').map(s => s.trim());
+                const okOS   = selectedOS === 'all' || cardOS === selectedOS.toLowerCase();
                 const okSW   = selectedSoftware.length === 0 || selectedSoftware.every(s => cardSW.includes(s));
                 card.style.display = (okOS && okSW) ? 'block' : 'none';
                 if (okOS && okSW) count++;
