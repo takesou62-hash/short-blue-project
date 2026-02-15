@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shorts Match - YouTubeショート動画マッチング</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js" onerror="alert('Supabaseライブラリの読み込みに失敗しました。ネットワークを確認してください。')"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -419,8 +419,17 @@
             alert(name + 'への相談フォームを開きます。\n\nお名前、メールアドレス、相談内容を入力してください。');
         }
 
-        // ===== 起動 =====
-        window.addEventListener('load', fetchEditors);
+        // ===== 起動：ライブラリ読み込みを待ってから実行 =====
+        function waitForSupabaseAndFetch() {
+            if (window.supabase && window.supabase.createClient) {
+                console.log('[OK] Supabaseライブラリ読み込み確認');
+                fetchEditors();
+            } else {
+                console.log('[待機中] Supabaseライブラリを待っています...');
+                setTimeout(waitForSupabaseAndFetch, 200);
+            }
+        }
+        document.addEventListener('DOMContentLoaded', waitForSupabaseAndFetch);
     </script>
 </body>
 </html>
