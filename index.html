@@ -364,17 +364,7 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>納期</label>
-                    <input type="text" id="reg_turnaround" placeholder="例：2-3日">
-                </div>
-                
-                <div class="form-group">
-                    <label>自己紹介</label>
-                    <textarea id="reg_description" placeholder="得意なジャンルや編集スタイルを教えてください"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label>アバター画像URL</label>
+                    <label>アバター画像URL（image_url）</label>
                     <input type="url" id="reg_avatar" placeholder="例：https://example.com/avatar.jpg">
                 </div>
                 
@@ -444,7 +434,7 @@
                     </div>
                 </div>` : '';
 
-            const avatar = e.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(e.name)}`;
+            const avatar = e.image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(e.name)}`;
             const osBadgeClass = os.toLowerCase() === 'mac' ? 'os-mac' : 'os-windows';
             const osLabel      = os.toLowerCase() === 'mac' ? '🍎 Mac' : '🪟 Windows';
 
@@ -630,13 +620,11 @@
                 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
                 const { error } = await client.from('editors').insert([{
-                    name:        name,
-                    os:          os,
-                    tools:       tools,
-                    price:       price,
-                    turnaround:  document.getElementById('reg_turnaround').value.trim() || null,
-                    description: document.getElementById('reg_description').value.trim() || null,
-                    avatar:      document.getElementById('reg_avatar').value.trim() || null,
+                    name:      name,
+                    os:        os,
+                    tools:     tools,
+                    price:     price,
+                    image_url: document.getElementById('reg_avatar').value.trim() || null,
                 }]);
 
                 if (error) throw error;
