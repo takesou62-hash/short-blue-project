@@ -3,83 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shorts Match - ログイン / マイページ</title>
+    <title>Shorts Match - ログイン / 新規登録</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
     <style>
         .gradient-bg { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); }
-        .gradient-text {
-            background: linear-gradient(to right, #06b6d4, #3b82f6);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-        }
         .gradient-btn { background: linear-gradient(to right, #06b6d4, #3b82f6); }
+        .fade-in { animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="gradient-bg min-h-screen flex items-center justify-center p-4">
 
-    <div id="authSection" class="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 transition-all duration-500">
-        <h1 class="text-3xl font-black text-center mb-8 gradient-text tracking-tighter">Shorts Match</h1>
-        <div class="space-y-4">
-            <input type="email" id="email" placeholder="メールアドレス" class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-cyan-500 outline-none">
-            <input type="password" id="password" placeholder="パスワード" class="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-cyan-500 outline-none">
-            <div id="authError" class="text-red-500 text-sm hidden font-bold text-center"></div>
-            <button onclick="handleAuth()" id="authBtn" class="w-full py-4 rounded-2xl text-white font-bold gradient-btn shadow-lg shadow-cyan-200 hover:scale-[1.02] transition-all">ログイン / 新規登録</button>
-        </div>
-        <p class="text-center text-xs text-slate-400 mt-6">アカウントがない場合は入力した情報で新規登録されます</p>
-    </div>
+    <main class="max-w-md w-full">
+        <div id="authSection" class="bg-white rounded-3xl shadow-xl p-8 fade-in">
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-black text-slate-800 mb-2">Shorts Match</h1>
+                <p class="text-slate-500 text-sm">編集者として活動を始めましょう</p>
+            </div>
 
-    <div id="mypageSection" class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl p-8 hidden transition-all duration-500">
-        <div class="flex justify-between items-center mb-8 border-b pb-4">
-            <div>
+            <div class="flex rounded-2xl bg-slate-100 p-1 mb-8">
+                <button id="tabLogin" onclick="switchTab('login')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-white text-slate-800 shadow-sm">ログイン</button>
+                <button id="tabRegister" onclick="switchTab('register')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-500">新規登録</button>
+            </div>
+
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
+                    <input id="email" type="email" placeholder="example@email.com" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 transition-all">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-2">パスワード</label>
+                    <input id="password" type="password" placeholder="••••••••" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 transition-all">
+                </div>
+                <div id="authError" class="text-red-500 text-xs hidden font-bold text-center"></div>
+                <button onclick="handleAuth()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] transition-all shadow-lg shadow-cyan-200">
+                    <span id="btnText">ログイン</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="mypageSection" class="bg-white rounded-3xl shadow-xl p-8 hidden fade-in">
+            <div class="flex justify-between items-center mb-8">
                 <h2 class="text-2xl font-bold text-slate-800">プロフィール編集</h2>
-                <p id="userEmailDisplay" class="text-xs text-slate-400"></p>
+                <button onclick="handleLogout()" class="text-slate-400 text-sm hover:text-red-500 font-bold">ログアウト</button>
             </div>
-            <button onclick="handleLogout()" class="text-slate-400 text-sm hover:text-red-500 font-bold transition-colors">ログアウト</button>
+            <div class="space-y-6">
+                <input type="text" id="name" placeholder="お名前" class="w-full p-4 bg-slate-50 rounded-2xl border outline-none">
+                <input type="text" id="tools" placeholder="使用ソフト" class="w-full p-4 bg-slate-50 rounded-2xl border outline-none">
+                <input type="number" id="price" placeholder="単価目安 (¥)" class="w-full p-4 bg-slate-50 rounded-2xl border outline-none">
+                <div id="statusMsg" class="text-emerald-500 text-sm hidden text-center font-bold"></div>
+                <button onclick="saveProfile()" class="w-full py-4 rounded-2xl text-white font-bold gradient-btn">保存する</button>
+            </div>
         </div>
-        
-        <div class="space-y-6">
-            <div>
-                <label class="block text-sm font-bold text-slate-500 mb-2">表示名</label>
-                <input type="text" id="name" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:border-cyan-500">
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-slate-500 mb-2">使用ソフト</label>
-                <input type="text" id="tools" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:border-cyan-500">
-            </div>
-            <div>
-                <label class="block text-sm font-bold text-slate-500 mb-2">制作単価目安 (¥)</label>
-                <input type="number" id="price" class="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100 outline-none focus:border-cyan-500">
-            </div>
-            <div id="statusMsg" class="text-emerald-500 text-sm hidden text-center font-bold"></div>
-            <button onclick="saveProfile()" class="w-full py-4 rounded-2xl text-white font-bold gradient-btn shadow-lg shadow-cyan-200 transition-all">設定を保存する</button>
-        </div>
-    </div>
+    </main>
 
     <script>
-        // Supabase接続設定
         const SUPABASE_URL = 'https://dwmgwdhunvanrsautvtj.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // 状態監視
+        let currentMode = 'login';
+
+        function switchTab(mode) {
+            currentMode = mode;
+            const isLogin = mode === 'login';
+            document.getElementById('tabLogin').className = isLogin ? 'flex-1 py-2.5 rounded-xl font-bold text-sm bg-white text-slate-800 shadow-sm' : 'flex-1 py-2.5 rounded-xl font-bold text-sm text-slate-500';
+            document.getElementById('tabRegister').className = !isLogin ? 'flex-1 py-2.5 rounded-xl font-bold text-sm bg-white text-slate-800 shadow-sm' : 'flex-1 py-2.5 rounded-xl font-bold text-sm text-slate-500';
+            document.getElementById('btnText').textContent = isLogin ? 'ログイン' : 'アカウント作成';
+        }
+
         sb.auth.onAuthStateChanged((event, session) => {
             if (session) {
-                showMypage();
-                document.getElementById('userEmailDisplay').textContent = session.user.email;
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('mypageSection').classList.remove('hidden');
                 loadProfile(session.user.id);
             } else {
-                showAuth();
+                document.getElementById('authSection').classList.remove('hidden');
+                document.getElementById('mypageSection').classList.add('hidden');
             }
         });
 
-        // ログイン・登録処理
         async function handleAuth() {
-            const emailInput = document.getElementById('email');
-            const passwordInput = document.getElementById('password');
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
             const errEl = document.getElementById('authError');
-            
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
+            errEl.classList.add('hidden');
 
             if (!email || !password) {
                 errEl.textContent = '⚠️ メールとパスワードを入力してください';
@@ -87,25 +96,17 @@
                 return;
             }
 
-            errEl.classList.add('hidden');
-            
-            // ログイン試行
-            let { data, error } = await sb.auth.signInWithPassword({ email, password });
-            
-            // ユーザーがいない等のエラー時は新規登録
-            if (error) {
-                const signup = await sb.auth.signUp({ email, password });
-                if (signup.error) {
-                    errEl.textContent = '❌ ' + signup.error.message;
-                    errEl.classList.remove('hidden');
-                } else {
-                    alert('登録しました！ログイン状態に切り替わります。');
-                }
+            if (currentMode === 'login') {
+                const { error } = await sb.auth.signInWithPassword({ email, password });
+                if (error) { errEl.textContent = '❌ ' + error.message; errEl.classList.remove('hidden'); }
+            } else {
+                const { error } = await sb.auth.signUp({ email, password });
+                if (error) { errEl.textContent = '❌ ' + error.message; errEl.classList.remove('hidden'); }
+                else { alert('登録完了！メールを確認するか、そのままログインしてください。'); }
             }
         }
 
         async function loadProfile(uid) {
-            // 型エラー回避のための text キャスト比較
             const { data } = await sb.from('editors').select('*').filter('id::text', 'eq', uid).maybeSingle();
             if (data) {
                 document.getElementById('name').value = data.name || '';
@@ -116,31 +117,21 @@
 
         async function saveProfile() {
             const { data: { user } } = await sb.auth.getUser();
-            const updates = {
+            const { error } = await sb.from('editors').upsert({
+                id: user.id,
                 name: document.getElementById('name').value,
                 tools: document.getElementById('tools').value,
-                price: document.getElementById('price').value,
-            };
-
-            const { error } = await sb.from('editors').upsert({
-                id: user.id, // ここでユーザーIDを紐付け
-                ...updates,
-                updated_at: new Date()
-            }, { onConflict: 'id' });
-            
-            const msgEl = document.getElementById('statusMsg');
+                price: document.getElementById('price').value
+            });
             if (!error) {
-                msgEl.textContent = '✅ 保存が完了しました！';
-                msgEl.classList.remove('hidden');
-                setTimeout(() => msgEl.classList.add('hidden'), 3000);
-            } else {
-                alert('保存失敗: ' + error.message);
+                const msg = document.getElementById('statusMsg');
+                msg.textContent = '✅ 保存しました！';
+                msg.classList.remove('hidden');
+                setTimeout(() => msg.classList.add('hidden'), 3000);
             }
         }
 
         function handleLogout() { sb.auth.signOut(); }
-        function showAuth() { document.getElementById('authSection').classList.remove('hidden'); document.getElementById('mypageSection').classList.add('hidden'); }
-        function showMypage() { document.getElementById('authSection').classList.add('hidden'); document.getElementById('mypageSection').classList.remove('hidden'); }
     </script>
 </body>
 </html>
