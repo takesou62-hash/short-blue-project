@@ -54,13 +54,69 @@
         }
         .preview-card:hover { transform: translateY(-4px); }
         .thumb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .thumb-item { position: relative; border-radius: 10px; overflow: hidden; aspect-ratio: 9/16; }
-        .thumb-item img { width:100%; height:100%; object-fit:cover; }
+        .thumb-item {
+            position: relative; border-radius: 10px; overflow: hidden; aspect-ratio: 9/16;
+            transform: translateY(0); transition: transform 0.25s ease, box-shadow 0.25s ease;
+            cursor: pointer;
+        }
+        .thumb-item:hover { transform: translateY(-6px); box-shadow: 0 12px 32px rgba(6,182,212,0.25); }
+        .thumb-item img { width:100%; height:100%; object-fit:cover; transition: opacity 0.2s; }
+        .thumb-item:hover img.thumb-static { opacity: 0; }
+        .thumb-item video.thumb-video {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: cover; opacity: 0; transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .thumb-item:hover video.thumb-video { opacity: 1; }
         .thumb-play {
             position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
             background: rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.2s;
         }
         .thumb-item:hover .thumb-play { opacity: 1; }
+
+        /* ===== チャットUI ===== */
+        .chat-bubble-wrap { display: flex; flex-direction: column; gap: 10px; }
+        .chat-row { display: flex; align-items: flex-end; gap: 8px; }
+        .chat-row.me { flex-direction: row-reverse; }
+        .chat-avatar-sm { width: 30px; height: 30px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+        .chat-bubble {
+            max-width: 72%; padding: 10px 14px; border-radius: 18px;
+            font-size: 14px; line-height: 1.55; word-break: break-word;
+        }
+        .chat-bubble.them {
+            background: #f1f5f9; color: #1e293b;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-bubble.me {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white; border-bottom-right-radius: 4px;
+        }
+        .chat-time { font-size: 10px; color: #94a3b8; margin-top: 2px; text-align: right; }
+        .chat-time.them { text-align: left; }
+        .chat-date-divider {
+            text-align: center; font-size: 11px; font-weight: 700;
+            color: #94a3b8; padding: 8px 0;
+        }
+        .chat-input-area {
+            border-top: 2px solid #f1f5f9;
+            padding: 12px 16px; display: flex; gap: 10px; align-items: flex-end;
+            background: white;
+        }
+        .chat-input-area textarea {
+            flex: 1; resize: none; border: 2px solid #e2e8f0; border-radius: 16px;
+            padding: 10px 14px; font-size: 14px; outline: none; font-family: inherit;
+            transition: border-color 0.2s; max-height: 120px; line-height: 1.5;
+        }
+        .chat-input-area textarea:focus { border-color: #06b6d4; }
+        .chat-send-btn {
+            width: 42px; height: 42px; border-radius: 14px; border: none; flex-shrink: 0;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white; font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.2s, transform 0.15s;
+        }
+        .chat-send-btn:hover { opacity: 0.88; transform: scale(1.07); }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 16px; min-height: 200px; max-height: 420px; }
         .section-tab { cursor: pointer; padding: 10px 20px; border-radius: 12px; font-weight: 700; font-size: 14px; transition: all 0.2s; }
         .section-tab.active { background: linear-gradient(135deg, #06b6d4, #3b82f6); color: white; }
         .section-tab:not(.active) { color: #64748b; }
@@ -211,9 +267,10 @@
             <div class="space-y-5">
 
                 <!-- タブナビ -->
-                <div class="card p-2 flex gap-1">
+                <div class="card p-2 flex gap-1 flex-wrap">
                     <button class="section-tab active" onclick="switchSection('profile', this)">📝 プロフィール編集</button>
                     <button class="section-tab" onclick="switchSection('portfolio', this)">🎬 ポートフォリオ</button>
+                    <button class="section-tab" onclick="switchSection('chat', this)">💬 チャット</button>
                 </div>
 
                 <!-- ===== プロフィール編集 ===== -->
@@ -403,6 +460,45 @@
 
                 </div>
 
+                <!-- ===== チャット ===== -->
+                <div id="sectionChat" class="hidden">
+                    <div class="card overflow-hidden flex flex-col" style="height: 580px;">
+
+                        <!-- チャットヘッダー -->
+                        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-white">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 gradient-btn rounded-xl flex items-center justify-center text-white text-base">💬</div>
+                                <div>
+                                    <div class="font-black text-slate-800 text-sm">メッセージ</div>
+                                    <div class="text-xs text-slate-400" id="chatOnlineStatus">接続中...</div>
+                                </div>
+                            </div>
+                            <!-- 相手選択 -->
+                            <select id="chatPartnerSelect"
+                                onchange="selectChatPartner(this.value)"
+                                class="text-xs font-bold border-2 border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-cyan-400 bg-slate-50 max-w-[160px]">
+                                <option value="">相手を選択...</option>
+                            </select>
+                        </div>
+
+                        <!-- メッセージ一覧 -->
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="text-center py-16 text-slate-300">
+                                <div class="text-4xl mb-3">💬</div>
+                                <p class="text-sm font-bold">チャット相手を選択してください</p>
+                            </div>
+                        </div>
+
+                        <!-- 入力エリア -->
+                        <div class="chat-input-area">
+                            <textarea id="chatInput" placeholder="メッセージを入力..." rows="1"
+                                onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendMessage(); }"
+                                oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+                            <button class="chat-send-btn" onclick="sendMessage()">➤</button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -439,6 +535,8 @@
         btn.classList.add('active');
         document.getElementById('sectionProfile').classList.toggle('hidden', section !== 'profile');
         document.getElementById('sectionPortfolio').classList.toggle('hidden', section !== 'portfolio');
+        document.getElementById('sectionChat').classList.toggle('hidden', section !== 'chat');
+        if (section === 'chat') initChat();
     }
 
     // ===== メッセージ =====
@@ -795,40 +893,62 @@
         }
 
         gallery.innerHTML = videoList.map((v, i) => {
-            // サムネイル・バッジ設定
-            let thumbSrc, badge, badgeClass, linkUrl;
-            if (v.type === 'youtube' || v.type === 'youtube_shorts') {
+            const isYt  = v.type === 'youtube' || v.type === 'youtube_shorts' || !v.type;
+            const badge = v.type === 'youtube_shorts' ? 'Shorts' : v.type === 'tiktok' ? 'TikTok' : 'YouTube';
+            const badgeBg = v.type === 'tiktok' ? '#000' : '#ff0000';
+
+            let thumbSrc, linkUrl, videoEmbed;
+            if (isYt) {
                 thumbSrc   = `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`;
-                badge      = v.type === 'youtube_shorts' ? 'Shorts' : 'YouTube';
-                badgeClass = 'bg-red-500';
-                linkUrl    = v.type === 'youtube_shorts'
-                    ? `https://youtube.com/shorts/${v.id}`
-                    : `https://youtube.com/watch?v=${v.id}`;
+                linkUrl    = v.type === 'youtube_shorts' ? `https://youtube.com/shorts/${v.id}` : `https://youtube.com/watch?v=${v.id}`;
+                // YouTube iframe embed for hover preview
+                videoEmbed = `<iframe class="thumb-video"
+                    src="https://www.youtube.com/embed/${v.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${v.id}&rel=0&modestbranding=1"
+                    frameborder="0" allow="autoplay; encrypted-media" allowfullscreen
+                    style="position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity 0.3s;pointer-events:none;border-radius:10px;"></iframe>`;
             } else {
-                // TikTok: オフィシャルなサムネイルAPIがないのでプレースホルダー
                 thumbSrc   = `https://api.dicebear.com/7.x/icons/svg?seed=tiktok${v.id}&backgroundColor=000000`;
-                badge      = 'TikTok';
-                badgeClass = 'bg-slate-900';
-                linkUrl    = v.url;
+                linkUrl    = v.url || '#';
+                videoEmbed = ''; // TikTokはiframe埋め込み非対応
             }
 
             return `
-            <div class="thumb-item group relative">
-                <a href="${linkUrl}" target="_blank" rel="noopener">
-                    <img src="${thumbSrc}" alt="thumbnail" class="w-full h-full object-cover">
+            <div class="thumb-item group relative"
+                onmouseenter="activateVideoPreview(this)"
+                onmouseleave="deactivateVideoPreview(this)">
+                <a href="${linkUrl}" target="_blank" rel="noopener" style="display:block;width:100%;height:100%;">
+                    <img class="thumb-static" src="${thumbSrc}" alt="${badge}" style="width:100%;height:100%;object-fit:cover;transition:opacity 0.2s;">
+                    ${videoEmbed}
                     <div class="thumb-play">
                         <span class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-lg">▶</span>
                     </div>
                 </a>
-                <!-- プラットフォームバッジ -->
-                <span class="absolute bottom-1.5 left-1.5 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md ${badgeClass} opacity-90">
-                    ${badge}
-                </span>
-                <!-- 削除ボタン -->
+                <span style="position:absolute;bottom:6px;left:6px;background:${badgeBg};color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;z-index:10;">${badge}</span>
                 <button onclick="removeVideo(${i})"
-                    class="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full text-xs font-black opacity-0 group-hover:opacity-100 flex items-center justify-center shadow transition-opacity">✕</button>
+                    class="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full text-xs font-black opacity-0 group-hover:opacity-100 flex items-center justify-center shadow transition-opacity z-10">✕</button>
             </div>`;
         }).join('');
+    }
+
+    // ===== ホバー動画プレビュー =====
+    function activateVideoPreview(el) {
+        const iframe = el.querySelector('iframe.thumb-video');
+        const img    = el.querySelector('img.thumb-static');
+        if (!iframe) return;
+        iframe.style.opacity = '1';
+        if (img) img.style.opacity = '0';
+    }
+
+    function deactivateVideoPreview(el) {
+        const iframe = el.querySelector('iframe.thumb-video');
+        const img    = el.querySelector('img.thumb-static');
+        if (!iframe) return;
+        // iframeを再生成することで動画を停止
+        const clone = iframe.cloneNode(true);
+        clone.style.opacity = '0';
+        clone.src = iframe.src; // 再ロードで停止
+        iframe.parentNode.replaceChild(clone, iframe);
+        if (img) img.style.opacity = '1';
     }
 
     async function saveVideos() {
@@ -843,6 +963,159 @@
         if (error) { showMsg('videoStatus','❌ '+error.message,'error'); return; }
         showMsg('videoStatus','✅ ギャラリーを保存しました！','success');
         setTimeout(() => hideMsg('videoStatus'), 3000);
+    }
+
+    // ===== チャット =====
+    let currentUserId   = null;
+    let currentUserName = null;
+    let chatPartnerId   = null;
+    let chatSubscription = null;
+
+    async function initChat() {
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+        currentUserId = user.id;
+
+        document.getElementById('chatOnlineStatus').textContent = 'オンライン';
+
+        // 相手一覧（editorsテーブルから自分以外）
+        const { data: editors } = await sb.from('editors').select('id, name').filter('id::text', 'neq', user.id);
+        const select = document.getElementById('chatPartnerSelect');
+        select.innerHTML = '<option value="">相手を選択...</option>';
+        (editors || []).forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e.id;
+            opt.textContent = e.name || e.id.slice(0, 8);
+            select.appendChild(opt);
+        });
+
+        // 自分の名前取得
+        const { data: me } = await sb.from('editors').select('name').filter('id::text', 'eq', user.id).maybeSingle();
+        currentUserName = me?.name || 'あなた';
+    }
+
+    async function selectChatPartner(partnerId) {
+        chatPartnerId = partnerId;
+        if (!partnerId) {
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="text-center py-16 text-slate-300">
+                    <div class="text-4xl mb-3">💬</div>
+                    <p class="text-sm font-bold">チャット相手を選択してください</p>
+                </div>`;
+            return;
+        }
+
+        // 既存のリアルタイム購読を解除
+        if (chatSubscription) { chatSubscription.unsubscribe(); chatSubscription = null; }
+
+        await loadMessages();
+
+        // リアルタイム購読
+        chatSubscription = sb.channel('messages-' + [currentUserId, partnerId].sort().join('-'))
+            .on('postgres_changes', {
+                event: 'INSERT', schema: 'public', table: 'messages',
+            }, payload => {
+                const msg = payload.new;
+                const isMe = msg.sender_id === currentUserId || msg.sender_id.toString() === currentUserId.toString();
+                if (
+                    (msg.sender_id === currentUserId   && msg.receiver_id === chatPartnerId) ||
+                    (msg.sender_id === chatPartnerId   && msg.receiver_id === currentUserId) ||
+                    (msg.sender_id.toString() === currentUserId.toString() && msg.receiver_id.toString() === chatPartnerId.toString()) ||
+                    (msg.sender_id.toString() === chatPartnerId.toString() && msg.receiver_id.toString() === currentUserId.toString())
+                ) {
+                    appendMessage(msg, isMe);
+                }
+            })
+            .subscribe();
+    }
+
+    async function loadMessages() {
+        const { data: msgs } = await sb.from('messages')
+            .select('*')
+            .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${chatPartnerId}),and(sender_id.eq.${chatPartnerId},receiver_id.eq.${currentUserId})`)
+            .order('created_at', { ascending: true });
+
+        const container = document.getElementById('chatMessages');
+        container.innerHTML = '';
+
+        if (!msgs || msgs.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-10 text-slate-300">
+                    <div class="text-3xl mb-2">✉️</div>
+                    <p class="text-sm font-bold">まだメッセージがありません</p>
+                    <p class="text-xs mt-1">最初のメッセージを送ってみましょう！</p>
+                </div>`;
+            return;
+        }
+
+        let lastDate = '';
+        msgs.forEach(msg => {
+            const isMe = msg.sender_id.toString() === currentUserId.toString();
+            const msgDate = new Date(msg.created_at).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' });
+            if (msgDate !== lastDate) {
+                const div = document.createElement('div');
+                div.className = 'chat-date-divider';
+                div.textContent = msgDate;
+                container.appendChild(div);
+                lastDate = msgDate;
+            }
+            appendMessage(msg, isMe, false);
+        });
+        scrollChatBottom();
+    }
+
+    function appendMessage(msg, isMe, doScroll = true) {
+        const container = document.getElementById('chatMessages');
+        // 空メッセージの表示を削除
+        const empty = container.querySelector('.text-center');
+        if (empty) empty.remove();
+
+        const time = new Date(msg.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        const avatarSrc = isMe
+            ? (document.getElementById('avatarImg').src || '')
+            : `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'chat-bubble-wrap';
+        wrap.innerHTML = `
+            <div class="chat-row ${isMe ? 'me' : ''}">
+                <img src="${avatarSrc}" class="chat-avatar-sm" alt="avatar">
+                <div>
+                    <div class="chat-bubble ${isMe ? 'me' : 'them'}">${escapeHtml(msg.content)}</div>
+                    <div class="chat-time ${isMe ? '' : 'them'}">${time}</div>
+                </div>
+            </div>`;
+        container.appendChild(wrap);
+        if (doScroll) scrollChatBottom();
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById('chatInput');
+        const content = input.value.trim();
+        if (!content || !chatPartnerId) return;
+
+        input.value = '';
+        input.style.height = 'auto';
+
+        const { error } = await sb.from('messages').insert({
+            sender_id:   currentUserId,
+            receiver_id: chatPartnerId,
+            content,
+        });
+
+        if (error) {
+            console.error('send error:', error);
+            alert('送信に失敗しました：' + error.message);
+        }
+    }
+
+    function scrollChatBottom() {
+        const el = document.getElementById('chatMessages');
+        el.scrollTop = el.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
     }
 
     // ===== ログアウト =====
