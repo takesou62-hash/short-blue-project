@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shorts Match - マイページ v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 60%, #e0e7ff 100%); }
+        .gradient-btn { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
+        .card { background: white; border-radius: 24px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
+        .tool-chip input[type=checkbox] { display:none; }
+        .tool-chip input:checked + label {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white; border-color: transparent;
+        }
+        .tool-chip label {
+            display: inline-block; padding: 6px 14px; border-radius: 20px;
+            border: 2px solid #e2e8f0; background: #f8fafc;
+            color: #475569; font-size: 12px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s;
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+
+<main class="max-w-4xl mx-auto px-4 py-12">
+    <div class="card p-8">
+        <h1 class="text-2xl font-black text-slate-800 mb-6">プロフィール詳細設定</h1>
+        
+        <div class="mb-8">
+            <label class="block text-sm font-black text-slate-400 mb-4">使用可能ソフト（追加分含む）</label>
+            <div id="toolsChips" class="flex flex-wrap gap-2">
+                </div>
+        </div>
+
+        <div id="statusMsg" class="hidden p-4 rounded-xl mb-4 font-bold text-center"></div>
+        
+        <button onclick="saveProfile()" class="w-full gradient-btn text-white py-4 rounded-2xl font-black shadow-lg">
+            💾 この設定で保存する
+        </button>
+    </div>
+</main>
+
+<script>
+    const SUPABASE_URL = 'https://dwmgwdhunvanrsautvtj.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // 竹上さんの希望に合わせて大幅に増やしたリスト
+    const additionalTools = [
+        'Premiere Pro', 'After Effects', 'DaVinci Resolve', 'Final Cut Pro',
+        'LumaFusion', 'Vrew', 'CapCut', 'Photoshop', 'Canva',
+        'VEGAS Pro', 'Avid', 'AviUtl', 'Blender', 'Illustrator', 'Filmora'
+    ];
+
+    function renderTools() {
+        const container = document.getElementById('toolsChips');
+        container.innerHTML = additionalTools.map(tool => `
+            <span class="tool-chip">
+                <input type="checkbox" id="t-${tool.replace(/\s+/g, '')}" value="${tool}">
+                <label for="t-${tool.replace(/\s+/g, '')}">${tool}</label>
+            </span>
+        `).join('');
+    }
+
+    async function saveProfile() {
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return alert('ログインが必要です');
+
+        const selectedTools = Array.from(document.querySelectorAll('#toolsChips input:checked')).map(cb => cb.value);
+        
+        const { error } = await sb.from('editors').upsert({
+            id: user.id,
+            tools: selectedTools
+        });
+
+        const msg = document.getElementById('statusMsg');
+        msg.classList.remove('hidden');
+        if (error) {
+            msg.textContent = '❌ エラー: ' + error.message;
+            msg.className = 'p-4 rounded-xl mb-4 font-bold text-center bg-red-50 text-red-600';
+        } else {
+            msg.textContent = '✅ ソフト一覧を更新しました！';
+            msg.className = 'p-4 rounded-xl mb-4 font-bold text-center bg-emerald-50 text-emerald-600';
+        }
+    }
+
+    window.onload = renderTools;
+</script>
+</body>
+</html>
