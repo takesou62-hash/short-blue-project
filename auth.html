@@ -3,135 +3,406 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shorts Match - ログイン / 新規登録</title>
+    <title>Shorts Match - ログイン / マイページ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
     <style>
         .gradient-bg { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); }
+        .gradient-text {
+            background: linear-gradient(to right, #06b6d4, #3b82f6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
         .gradient-btn { background: linear-gradient(to right, #06b6d4, #3b82f6); }
+        .tool-checkbox:checked + .tool-label {
+            background: linear-gradient(to right, #06b6d4, #3b82f6);
+            color: white; border-color: #06b6d4;
+        }
         .fade-in { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="gradient-bg min-h-screen flex items-center justify-center p-4">
+<body class="gradient-bg min-h-screen">
 
-    <main class="max-w-md w-full">
-        <div id="authSection" class="bg-white rounded-3xl shadow-xl p-8 fade-in">
+    <!-- ヘッダー -->
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-2 font-bold text-xl text-cyan-600">
+                ▶ Shorts Match
+            </a>
+            <div id="headerNav" class="flex items-center gap-3"></div>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="max-w-md mx-auto px-6 py-12">
+
+        <!-- ===== ログイン/新規登録画面 ===== -->
+        <div id="authSection" class="fade-in">
             <div class="text-center mb-8">
-                <h1 class="text-3xl font-black text-slate-800 mb-2">Shorts Match</h1>
-                <p class="text-slate-500 text-sm">編集者として活動を始めましょう</p>
+                <div class="w-16 h-16 gradient-btn rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-4">✏️</div>
+                <h1 class="text-3xl font-black text-slate-800 mb-2">編集者ポータル</h1>
+                <p class="text-slate-500">ログインしてプロフィールを管理しましょう</p>
             </div>
 
-            <div class="flex rounded-2xl bg-slate-100 p-1 mb-8">
-                <button id="tabLogin" onclick="switchTab('login')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-white text-slate-800 shadow-sm">ログイン</button>
-                <button id="tabRegister" onclick="switchTab('register')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-500">新規登録</button>
+            <div class="bg-white rounded-3xl shadow-xl p-8">
+
+                <!-- タブ -->
+                <div class="flex rounded-2xl bg-slate-100 p-1 mb-8">
+                    <button id="tabLogin" onclick="switchTab('login')"
+                        class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-white text-slate-800 shadow-sm">
+                        ログイン
+                    </button>
+                    <button id="tabRegister" onclick="switchTab('register')"
+                        class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-500">
+                        新規登録
+                    </button>
+                </div>
+
+                <!-- ログインフォーム -->
+                <div id="loginForm">
+                    <div class="mb-5">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
+                        <input id="loginEmail" type="email" placeholder="example@email.com"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">パスワード</label>
+                        <input id="loginPassword" type="password" placeholder="••••••••"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
+                    </div>
+                    <div id="loginError" class="text-red-500 text-sm mb-4 hidden"></div>
+                    <button onclick="handleLogin()"
+                        class="w-full gradient-btn text-white py-4 rounded-2xl font-bold text-lg hover:opacity-90 hover:scale-[1.02] transition-all shadow-lg shadow-cyan-200">
+                        ログイン
+                    </button>
+                </div>
+
+                <!-- 新規登録フォーム -->
+                <div id="registerForm" class="hidden">
+                    <div class="mb-5">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス <span class="text-red-400">*</span></label>
+                        <input id="regEmail" type="email" placeholder="example@email.com"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
+                    </div>
+                    <div class="mb-5">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">パスワード <span class="text-red-400">*</span>（6文字以上）</label>
+                        <input id="regPassword" type="password" placeholder="••••••••"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-bold text-slate-700 mb-1">
+                            お名前（表示名）<span class="text-red-400">*</span>
+                        </label>
+                        <p class="text-xs text-slate-400 mb-2">編集者一覧カードに表示される名前です</p>
+                        <input id="regName" type="text" placeholder="例：山田 太郎"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
+                    </div>
+                    <div id="registerError" class="text-red-500 text-sm mb-4 hidden"></div>
+                    <button onclick="handleRegister()"
+                        class="w-full gradient-btn text-white py-4 rounded-2xl font-bold text-lg hover:opacity-90 hover:scale-[1.02] transition-all shadow-lg shadow-cyan-200">
+                        アカウントを作成
+                    </button>
+                    <p class="text-center text-slate-400 text-xs mt-4">
+                        登録後、確認メールが送られます
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== マイページ ===== -->
+        <div id="mypageSection" class="hidden fade-in">
+
+            <!-- プロフィールヘッダー -->
+            <div class="text-center mb-8">
+                <div id="mypageAvatar" class="w-20 h-20 rounded-2xl mx-auto mb-4 overflow-hidden border-4 border-white shadow-lg">
+                    <img id="mypageAvatarImg" src="" alt="" class="w-full h-full object-cover">
+                </div>
+                <h1 class="text-2xl font-black text-slate-800" id="mypageName">読み込み中...</h1>
+                <p class="text-cyan-500 font-bold text-sm mt-1" id="mypageEmail"></p>
             </div>
 
-            <div class="space-y-5">
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
-                    <input id="email" type="email" placeholder="example@email.com" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 transition-all">
+            <!-- 編集フォーム -->
+            <div class="bg-white rounded-3xl shadow-xl p-8 mb-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                    <span class="w-8 h-8 gradient-btn rounded-lg flex items-center justify-center text-white text-sm">✏️</span>
+                    プロフィール編集
+                </h2>
+
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">お名前 <span class="text-red-400">*</span></label>
+                    <input id="mpName" type="text" placeholder="例：山田 太郎"
+                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
                 </div>
-                <div>
-                    <label class="block text-sm font-bold text-slate-700 mb-2">パスワード</label>
-                    <input id="password" type="password" placeholder="••••••••" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 transition-all">
+
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">使用OS <span class="text-red-400">*</span></label>
+                    <select id="mpOs"
+                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
+                        <option value="">選択してください</option>
+                        <option value="Windows">🪟 Windows</option>
+                        <option value="Mac">🍎 Mac</option>
+                    </select>
                 </div>
-                <div id="authError" class="text-red-500 text-xs hidden font-bold text-center"></div>
-                <button onclick="handleAuth()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold text-lg hover:scale-[1.02] transition-all shadow-lg shadow-cyan-200">
-                    <span id="btnText">ログイン</span>
+
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">使用ソフト <span class="text-red-400">*</span>（複数選択可）</label>
+                    <div class="flex flex-wrap gap-2 mt-1">
+                        <input type="checkbox" class="tool-checkbox hidden" id="mp_t1" value="Premiere Pro">
+                        <label class="tool-label cursor-pointer px-4 py-2 rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-sm text-slate-600 transition-all" for="mp_t1">🎬 Premiere Pro</label>
+
+                        <input type="checkbox" class="tool-checkbox hidden" id="mp_t2" value="After Effects">
+                        <label class="tool-label cursor-pointer px-4 py-2 rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-sm text-slate-600 transition-all" for="mp_t2">✨ After Effects</label>
+
+                        <input type="checkbox" class="tool-checkbox hidden" id="mp_t3" value="Final Cut Pro">
+                        <label class="tool-label cursor-pointer px-4 py-2 rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-sm text-slate-600 transition-all" for="mp_t3">🎥 Final Cut Pro</label>
+
+                        <input type="checkbox" class="tool-checkbox hidden" id="mp_t4" value="DaVinci Resolve">
+                        <label class="tool-label cursor-pointer px-4 py-2 rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-sm text-slate-600 transition-all" for="mp_t4">🎞️ DaVinci Resolve</label>
+
+                        <input type="checkbox" class="tool-checkbox hidden" id="mp_t5" value="Photoshop">
+                        <label class="tool-label cursor-pointer px-4 py-2 rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-sm text-slate-600 transition-all" for="mp_t5">🎨 Photoshop</label>
+
+                        <input type="checkbox" class="tool-checkbox hidden" id="mp_t6" value="Cinema 4D">
+                        <label class="tool-label cursor-pointer px-4 py-2 rounded-xl border-2 border-slate-200 bg-slate-50 font-bold text-sm text-slate-600 transition-all" for="mp_t6">🎭 Cinema 4D</label>
+                    </div>
+                </div>
+
+                <div class="mb-5">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">単価（price）</label>
+                    <input id="mpPrice" type="text" placeholder="例：¥3,000〜"
+                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-slate-700 mb-2">ポートフォリオURL（image_url）</label>
+                    <input id="mpImageUrl" type="url" placeholder="例：https://example.com/avatar.jpg"
+                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
+                </div>
+
+                <div id="mypageError"   class="text-red-500   text-sm mb-3 hidden"></div>
+                <div id="mypageSuccess" class="text-emerald-600 text-sm mb-3 hidden"></div>
+
+                <button onclick="handleUpdate()"
+                    class="w-full gradient-btn text-white py-4 rounded-2xl font-bold text-lg hover:opacity-90 hover:scale-[1.02] transition-all shadow-lg shadow-cyan-200">
+                    保存する
                 </button>
             </div>
+
+            <!-- ログアウト -->
+            <button onclick="handleLogout()"
+                class="w-full bg-white text-slate-500 py-3 rounded-2xl font-bold border-2 border-slate-200 hover:border-red-300 hover:text-red-500 transition-all">
+                ログアウト
+            </button>
         </div>
 
-        <div id="mypageSection" class="bg-white rounded-3xl shadow-xl p-8 hidden fade-in">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-bold text-slate-800">プロフィール編集</h2>
-                <button onclick="handleLogout()" class="text-slate-400 text-sm hover:text-red-500 font-bold">ログアウト</button>
-            </div>
-            <div class="space-y-6">
-                <input type="text" id="name" placeholder="お名前" class="w-full p-4 bg-slate-50 rounded-2xl border outline-none">
-                <input type="text" id="tools" placeholder="使用ソフト" class="w-full p-4 bg-slate-50 rounded-2xl border outline-none">
-                <input type="number" id="price" placeholder="単価目安 (¥)" class="w-full p-4 bg-slate-50 rounded-2xl border outline-none">
-                <div id="statusMsg" class="text-emerald-500 text-sm hidden text-center font-bold"></div>
-                <button onclick="saveProfile()" class="w-full py-4 rounded-2xl text-white font-bold gradient-btn">保存する</button>
-            </div>
-        </div>
     </main>
 
     <script>
-        const SUPABASE_URL = 'https://dwmgwdhunvanrsautvtj.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
-        const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // ===== Supabase設定 =====
+        const SUPABASE_URL      = 'https://dwmgwdhunvanrsautvtj.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3bWd3ZGh1bnZhbnJzYXV0dnRqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEwNzE1NzMsImV4cCI6MjA4NjY0NzU3M30.A7vam36zcqqwRcgE4ZFrnhiiJjzRpmt0Z3djYY-ixBo';
 
-        let currentMode = 'login';
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        function switchTab(mode) {
-            currentMode = mode;
-            const isLogin = mode === 'login';
-            document.getElementById('tabLogin').className = isLogin ? 'flex-1 py-2.5 rounded-xl font-bold text-sm bg-white text-slate-800 shadow-sm' : 'flex-1 py-2.5 rounded-xl font-bold text-sm text-slate-500';
-            document.getElementById('tabRegister').className = !isLogin ? 'flex-1 py-2.5 rounded-xl font-bold text-sm bg-white text-slate-800 shadow-sm' : 'flex-1 py-2.5 rounded-xl font-bold text-sm text-slate-500';
-            document.getElementById('btnText').textContent = isLogin ? 'ログイン' : 'アカウント作成';
-        }
-
-        sb.auth.onAuthStateChanged((event, session) => {
+        // ===== 起動：セッション確認 =====
+        window.addEventListener('load', async () => {
+            const { data: { session } } = await sb.auth.getSession();
             if (session) {
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('mypageSection').classList.remove('hidden');
-                loadProfile(session.user.id);
+                await loadMypage(session.user);
             } else {
-                document.getElementById('authSection').classList.remove('hidden');
-                document.getElementById('mypageSection').classList.add('hidden');
+                showAuth();
             }
         });
 
-        async function handleAuth() {
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const errEl = document.getElementById('authError');
+        // ===== タブ切り替え =====
+        function switchTab(tab) {
+            const isLogin = tab === 'login';
+            document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
+            document.getElementById('registerForm').classList.toggle('hidden', isLogin);
+            document.getElementById('tabLogin').className    = isLogin
+                ? 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-white text-slate-800 shadow-sm'
+                : 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-500';
+            document.getElementById('tabRegister').className = !isLogin
+                ? 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-white text-slate-800 shadow-sm'
+                : 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-500';
+        }
+
+        // ===== ログイン =====
+        async function handleLogin() {
+            const email    = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const errEl    = document.getElementById('loginError');
             errEl.classList.add('hidden');
 
-            if (!email || !password) {
-                errEl.textContent = '⚠️ メールとパスワードを入力してください';
+            if (!email || !password) { showErr(errEl, 'メールアドレスとパスワードを入力してください'); return; }
+
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) { showErr(errEl, 'ログインに失敗しました：' + error.message); return; }
+            await loadMypage(data.user);
+        }
+
+        // ===== 新規登録 =====
+        async function handleRegister() {
+            const email    = document.getElementById('regEmail').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const name     = document.getElementById('regName').value.trim();
+            const errEl    = document.getElementById('registerError');
+            errEl.classList.add('hidden');
+
+            // バリデーション
+            if (!email)    { showErr(errEl, 'メールアドレスを入力してください'); return; }
+            if (!password) { showErr(errEl, 'パスワードを入力してください'); return; }
+            if (password.length < 6) { showErr(errEl, 'パスワードは6文字以上にしてください'); return; }
+            if (!name)     { showErr(errEl, 'お名前（表示名）を入力してください'); return; }
+
+            // ① Supabase Authでユーザー作成
+            const { data, error: authError } = await sb.auth.signUp({ email, password });
+            if (authError) { showErr(errEl, '登録に失敗しました：' + authError.message); return; }
+
+            if (data.user) {
+                // ② editorsテーブルのnameカラムに表示名を保存
+                const { error: dbError } = await sb.from('editors').insert([{
+                    id:    data.user.id,
+                    name:  name,          // ← お名前（表示名）を保存
+                    os:    null,
+                    tools: [],
+                    price: null,
+                }]);
+
+                if (dbError) {
+                    console.error('editors insert error:', dbError);
+                    // Auth作成は成功しているのでマイページへ遷移
+                    showErr(errEl, '⚠️ アカウントは作成されましたが、プロフィール保存に失敗しました：' + dbError.message);
+                }
+
+                await loadMypage(data.user);
+
+            } else {
+                // メール確認が必要な場合
                 errEl.classList.remove('hidden');
+                errEl.className = 'text-emerald-600 text-sm mb-4';
+                errEl.textContent = '✅ 確認メールを送信しました。メールを確認してログインしてください。';
+            }
+        }
+
+        // ===== マイページ表示 =====
+        async function loadMypage(user) {
+            showMypage();
+
+            // メールアドレス表示
+            document.getElementById('mypageEmail').textContent = user.email;
+
+            // ヘッダーにマイページリンク表示
+            document.getElementById('headerNav').innerHTML = `
+                <span class="text-sm text-slate-500">${user.email}</span>
+                <button onclick="handleLogout()" class="text-sm text-red-400 font-bold hover:text-red-600 transition-colors">ログアウト</button>
+            `;
+
+            // editorsテーブルから自分のデータ取得
+            // auth.uid()::text = id::text でキャストして型不一致を回避
+            const { data, error } = await sb
+                .from('editors')
+                .select('*')
+                .filter('id::text', 'eq', user.id)
+                .maybeSingle();
+
+            console.log('mypage data:', data, 'error:', error);
+
+            if (data) {
+                document.getElementById('mypageName').textContent   = data.name || '未設定';
+                document.getElementById('mpName').value             = data.name || '';
+                document.getElementById('mpOs').value               = data.os   || '';
+                document.getElementById('mpPrice').value            = data.price || '';
+                document.getElementById('mpImageUrl').value         = data.image_url || '';
+
+                // アバター
+                if (data.image_url) {
+                    document.getElementById('mypageAvatarImg').src = data.image_url;
+                } else {
+                    document.getElementById('mypageAvatarImg').src =
+                        `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(data.name || user.id)}`;
+                }
+
+                // ソフトのチェックボックスを復元
+                const tools = Array.isArray(data.tools) ? data.tools : [];
+                document.querySelectorAll('.tool-checkbox').forEach(cb => {
+                    cb.checked = tools.includes(cb.value);
+                });
+            } else {
+                // データなし（新規登録直後など）
+                document.getElementById('mypageName').textContent = '未設定';
+                document.getElementById('mypageAvatarImg').src =
+                    `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`;
+            }
+        }
+
+        // ===== プロフィール更新 =====
+        async function handleUpdate() {
+            const errEl  = document.getElementById('mypageError');
+            const sucEl  = document.getElementById('mypageSuccess');
+            errEl.classList.add('hidden');
+            sucEl.classList.add('hidden');
+
+            const name  = document.getElementById('mpName').value.trim();
+            const os    = document.getElementById('mpOs').value;
+            const price = document.getElementById('mpPrice').value.trim();
+            const imageUrl = document.getElementById('mpImageUrl').value.trim();
+            const tools = Array.from(document.querySelectorAll('.tool-checkbox:checked')).map(c => c.value);
+
+            if (!name)  { showErr(errEl, 'お名前を入力してください'); return; }
+            if (!os)    { showErr(errEl, '使用OSを選択してください'); return; }
+            if (tools.length === 0) { showErr(errEl, '使用ソフトを1つ以上選択してください'); return; }
+
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) { showErr(errEl, 'セッションが切れています。再ログインしてください'); return; }
+
+            // auth.uid()::text = id::text でキャストして更新
+            const { error } = await sb
+                .from('editors')
+                .update({
+                    name:      name,
+                    os:        os,
+                    tools:     tools,
+                    price:     price     || null,
+                    image_url: imageUrl  || null,
+                })
+                .filter('id::text', 'eq', user.id);
+
+            if (error) {
+                console.error('update error:', error);
+                showErr(errEl, '更新に失敗しました：' + error.message);
                 return;
             }
 
-            if (currentMode === 'login') {
-                const { error } = await sb.auth.signInWithPassword({ email, password });
-                if (error) { errEl.textContent = '❌ ' + error.message; errEl.classList.remove('hidden'); }
-            } else {
-                const { error } = await sb.auth.signUp({ email, password });
-                if (error) { errEl.textContent = '❌ ' + error.message; errEl.classList.remove('hidden'); }
-                else { alert('登録完了！メールを確認するか、そのままログインしてください。'); }
-            }
+            // 表示名・アバターを即時更新
+            document.getElementById('mypageName').textContent = name;
+            if (imageUrl) document.getElementById('mypageAvatarImg').src = imageUrl;
+
+            sucEl.textContent = '✅ プロフィールを保存しました！';
+            sucEl.classList.remove('hidden');
+            setTimeout(() => sucEl.classList.add('hidden'), 3000);
         }
 
-        async function loadProfile(uid) {
-            const { data } = await sb.from('editors').select('*').filter('id::text', 'eq', uid).maybeSingle();
-            if (data) {
-                document.getElementById('name').value = data.name || '';
-                document.getElementById('tools').value = data.tools || '';
-                document.getElementById('price').value = data.price || '';
-            }
+        // ===== ログアウト =====
+        async function handleLogout() {
+            await sb.auth.signOut();
+            document.getElementById('headerNav').innerHTML = '';
+            showAuth();
         }
 
-        async function saveProfile() {
-            const { data: { user } } = await sb.auth.getUser();
-            const { error } = await sb.from('editors').upsert({
-                id: user.id,
-                name: document.getElementById('name').value,
-                tools: document.getElementById('tools').value,
-                price: document.getElementById('price').value
-            });
-            if (!error) {
-                const msg = document.getElementById('statusMsg');
-                msg.textContent = '✅ 保存しました！';
-                msg.classList.remove('hidden');
-                setTimeout(() => msg.classList.add('hidden'), 3000);
-            }
+        // ===== UI切り替えヘルパー =====
+        function showAuth() {
+            document.getElementById('authSection').classList.remove('hidden');
+            document.getElementById('mypageSection').classList.add('hidden');
         }
-
-        function handleLogout() { sb.auth.signOut(); }
+        function showMypage() {
+            document.getElementById('authSection').classList.add('hidden');
+            document.getElementById('mypageSection').classList.remove('hidden');
+        }
+        function showErr(el, msg) {
+            el.textContent = '⚠️ ' + msg;
+            el.classList.remove('hidden');
+        }
     </script>
 </body>
 </html>
