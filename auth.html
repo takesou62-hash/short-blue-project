@@ -516,8 +516,29 @@
     // ===== 起動 =====
     window.addEventListener('load', async () => {
         const { data: { session } } = await sb.auth.getSession();
-        if (session) { await loadMypage(session.user); }
-        else { showAuth(); }
+        if (session) {
+            await loadMypage(session.user);
+            // request.htmlから遷移してきた場合、チャットタブを自動で開く
+            const openChat = new URLSearchParams(location.search).get('open_chat');
+            if (openChat) {
+                // マイページ表示後にチャットタブへ切り替え
+                setTimeout(() => {
+                    const chatBtn = document.querySelector('.section-tab:nth-child(3)');
+                    if (chatBtn) {
+                        switchSection('chat', chatBtn);
+                        setTimeout(() => {
+                            const select = document.getElementById('chatPartnerSelect');
+                            if (select) {
+                                select.value = openChat;
+                                selectChatPartner(openChat);
+                            }
+                        }, 800);
+                    }
+                }, 600);
+            }
+        } else {
+            showAuth();
+        }
     });
 
     // ===== タブ =====

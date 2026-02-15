@@ -350,7 +350,7 @@
                         <div style="font-size:0.9em; color:#6b7280;">納期: ${e.turnaround || '要相談'}</div>
                         <div class="price">${e.price || '要相談'}</div>
                     </div>
-                    <button class="btn-consult" onclick="showContact('${e.name}')">相談する</button>
+                    <button class="btn-consult" onclick="goToRequest('${e.id}', '${e.name}', '${(e.image_url||'').replace(/'/g,'')}')">相談する</button>
                 </div>
             </div>`;
         }
@@ -465,8 +465,9 @@
             document.getElementById('editors').scrollIntoView({ behavior: 'smooth' });
         }
 
-        function showContact(name) {
-            alert(name + 'への相談フォームを開きます。\n\nお名前、メールアドレス、相談内容を入力してください。');
+        function goToRequest(editorId, editorName, editorAvatar) {
+            const params = new URLSearchParams({ editor_id: editorId, editor_name: editorName, editor_avatar: editorAvatar });
+            window.location.href = 'request.html?' + params.toString();
         }
 
         // ===== ヘッダーボタン：ログイン状態で切り替え =====
