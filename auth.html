@@ -87,7 +87,7 @@
         </a>
         <div class="flex items-center gap-3">
             <span id="headerEmail" class="text-xs text-slate-400 hidden md:block"></span>
-            <a href="index.html" class="text-sm font-bold text-slate-500 hover:text-cyan-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-cyan-50">← トップ</a>
+            <a href="index.html" class="text-sm font-bold text-slate-500 hover:text-cyan-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-cyan-50">← トップページに戻る</a>
         </div>
     </div>
 </header>
@@ -158,6 +158,50 @@
                         class="mt-4 w-full text-slate-400 text-sm py-2.5 rounded-xl border-2 border-slate-100 hover:text-red-500 hover:border-red-100 transition-all font-bold">
                         ログアウト
                     </button>
+                </div>
+
+                <!-- 実績・評価カード -->
+                <div class="card p-5">
+                    <h3 class="font-black text-slate-700 text-sm mb-4 flex items-center gap-2">
+                        📊 実績・評価
+                        <span class="text-xs font-bold text-slate-400">（自己申告）</span>
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- 案件数 -->
+                        <div class="bg-cyan-50 rounded-2xl p-4 text-center">
+                            <div class="text-3xl font-black gradient-text" id="statsProjects">-</div>
+                            <div class="text-xs font-bold text-slate-400 mt-1">受注案件数</div>
+                            <button onclick="editStats('projects')"
+                                class="mt-2 text-xs text-cyan-500 font-bold hover:underline">編集</button>
+                        </div>
+                        <!-- 評価 -->
+                        <div class="bg-amber-50 rounded-2xl p-4 text-center">
+                            <div class="text-3xl font-black text-amber-500" id="statsRating">-</div>
+                            <div class="text-xs font-bold text-slate-400 mt-1">平均評価 ⭐</div>
+                            <button onclick="editStats('rating')"
+                                class="mt-2 text-xs text-amber-500 font-bold hover:underline">編集</button>
+                        </div>
+                    </div>
+                    <!-- 編集フォーム（インライン） -->
+                    <div id="statsEditArea" class="hidden mt-4 space-y-3">
+                        <div class="flex gap-2">
+                            <div class="flex-1">
+                                <label class="text-xs font-bold text-slate-400 block mb-1">受注案件数</label>
+                                <input id="inputProjects" type="number" min="0" placeholder="例: 15"
+                                    class="w-full px-3 py-2 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 text-sm">
+                            </div>
+                            <div class="flex-1">
+                                <label class="text-xs font-bold text-slate-400 block mb-1">平均評価（1〜5）</label>
+                                <input id="inputRating" type="number" min="1" max="5" step="0.1" placeholder="例: 4.8"
+                                    class="w-full px-3 py-2 border-2 border-slate-200 rounded-xl outline-none focus:border-amber-400 bg-slate-50 text-sm">
+                            </div>
+                        </div>
+                        <button onclick="saveStats()"
+                            class="w-full gradient-btn text-white py-2.5 rounded-xl font-bold text-sm hover:opacity-90 transition-all">
+                            保存する
+                        </button>
+                        <div id="statsMsg" class="hidden text-xs font-bold px-3 py-2 rounded-xl text-center"></div>
+                    </div>
                 </div>
 
                 <!-- 公開プレビュー -->
@@ -290,11 +334,31 @@
                         </div>
                     </div>
 
-                    <!-- ポートフォリオURL -->
+                    <!-- SNSアカウント -->
                     <div>
-                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">ポートフォリオURL</label>
-                        <input id="mpPortfolioUrl" type="url" placeholder="https://youtube.com/@yourhandle"
-                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-3">SNSアカウント</label>
+                        <div class="space-y-2.5">
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 text-center text-lg flex-shrink-0">▶️</span>
+                                <input id="snYoutube" type="url" placeholder="YouTube チャンネルURL"
+                                    class="flex-1 px-4 py-2.5 border-2 border-slate-200 rounded-xl outline-none focus:border-red-400 bg-slate-50 text-sm">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 text-center text-lg flex-shrink-0">🎵</span>
+                                <input id="snTiktok" type="url" placeholder="TikTok プロフィールURL"
+                                    class="flex-1 px-4 py-2.5 border-2 border-slate-200 rounded-xl outline-none focus:border-slate-400 bg-slate-50 text-sm">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 text-center text-lg flex-shrink-0">📸</span>
+                                <input id="snInstagram" type="url" placeholder="Instagram プロフィールURL"
+                                    class="flex-1 px-4 py-2.5 border-2 border-slate-200 rounded-xl outline-none focus:border-pink-400 bg-slate-50 text-sm">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 text-center text-lg flex-shrink-0">🐦</span>
+                                <input id="snX" type="url" placeholder="X (Twitter) プロフィールURL"
+                                    class="flex-1 px-4 py-2.5 border-2 border-slate-200 rounded-xl outline-none focus:border-slate-600 bg-slate-50 text-sm">
+                            </div>
+                        </div>
                     </div>
 
                     <!-- ステータス -->
@@ -459,7 +523,19 @@
         document.getElementById('mpName').value        = data.name          || '';
         document.getElementById('mpPrice').value       = data.price         || '';
         document.getElementById('imageUrlInput').value = data.image_url     || '';
-        document.getElementById('mpPortfolioUrl').value= data.portfolio_url || '';
+
+        // SNSリンク
+        const sns = data.sns_links || {};
+        document.getElementById('snYoutube').value   = sns.youtube   || '';
+        document.getElementById('snTiktok').value    = sns.tiktok    || '';
+        document.getElementById('snInstagram').value = sns.instagram || '';
+        document.getElementById('snX').value         = sns.x         || '';
+
+        // 実績・評価
+        document.getElementById('statsProjects').textContent = data.projects != null ? data.projects + '件' : '-';
+        document.getElementById('statsRating').textContent   = data.rating   != null ? data.rating           : '-';
+        document.getElementById('inputProjects').value       = data.projects != null ? data.projects         : '';
+        document.getElementById('inputRating').value         = data.rating   != null ? data.rating           : '';
 
         // ツールチェック
         const tools = Array.isArray(data.tools) ? data.tools : [];
@@ -637,13 +713,19 @@
 
         const tools  = Array.from(document.querySelectorAll('#toolsChips input:checked')).map(c=>c.value);
         const genres = Array.from(document.querySelectorAll('#genreChips input:checked')).map(c=>c.value);
+        const sns = {
+            youtube:   document.getElementById('snYoutube').value.trim()   || null,
+            tiktok:    document.getElementById('snTiktok').value.trim()    || null,
+            instagram: document.getElementById('snInstagram').value.trim() || null,
+            x:         document.getElementById('snX').value.trim()         || null,
+        };
 
         const { error } = await sb.from('editors').upsert({
-            id:            user.id,
+            id:        user.id,
             name,
-            price:         document.getElementById('mpPrice').value.trim()        || null,
-            image_url:     document.getElementById('imageUrlInput').value.trim()  || null,
-            portfolio_url: document.getElementById('mpPortfolioUrl').value.trim() || null,
+            price:     document.getElementById('mpPrice').value.trim()       || null,
+            image_url: document.getElementById('imageUrlInput').value.trim() || null,
+            sns_links: sns,
             tools,
             genres,
         }, { onConflict: 'id' });
@@ -787,6 +869,51 @@
         if (error) { showMsg('videoStatus','❌ '+error.message,'error'); return; }
         showMsg('videoStatus','✅ ギャラリーを保存しました！','success');
         setTimeout(() => hideMsg('videoStatus'), 3000);
+    }
+
+    // ===== 実績・評価の編集 =====
+    function editStats(field) {
+        const area = document.getElementById('statsEditArea');
+        area.classList.remove('hidden');
+        const target = field === 'projects'
+            ? document.getElementById('inputProjects')
+            : document.getElementById('inputRating');
+        target.focus();
+    }
+
+    async function saveStats() {
+        const projects = document.getElementById('inputProjects').value.trim();
+        const rating   = document.getElementById('inputRating').value.trim();
+        const msgEl    = document.getElementById('statsMsg');
+        msgEl.classList.add('hidden');
+
+        if (rating && (parseFloat(rating) < 1 || parseFloat(rating) > 5)) {
+            msgEl.className = 'text-xs font-bold px-3 py-2 rounded-xl text-center bg-red-50 text-red-500';
+            msgEl.textContent = '⚠️ 評価は1〜5の範囲で入力してください';
+            msgEl.classList.remove('hidden');
+            return;
+        }
+
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+
+        const { error } = await sb.from('editors').upsert({
+            id:       user.id,
+            projects: projects !== '' ? parseInt(projects) : null,
+            rating:   rating   !== '' ? parseFloat(rating) : null,
+        }, { onConflict: 'id' });
+
+        if (error) {
+            msgEl.className = 'text-xs font-bold px-3 py-2 rounded-xl text-center bg-red-50 text-red-500';
+            msgEl.textContent = '❌ ' + error.message;
+            msgEl.classList.remove('hidden');
+            return;
+        }
+
+        // UI即時反映
+        document.getElementById('statsProjects').textContent = projects !== '' ? projects + '件' : '-';
+        document.getElementById('statsRating').textContent   = rating   !== '' ? rating           : '-';
+        document.getElementById('statsEditArea').classList.add('hidden');
     }
 
     // ===== ログアウト =====

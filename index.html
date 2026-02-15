@@ -262,6 +262,7 @@
             const swList  = Array.isArray(e.tools) ? e.tools : (typeof e.tools === 'string' ? e.tools.split(',').map(s => s.trim()) : []);
             const details = Array.isArray(e.software_details) ? e.software_details : [];
             const videos  = Array.isArray(e.sample_videos) ? e.sample_videos : [];
+            const sns     = e.sns_links || {};
 
             const swHTML = (details.length > 0 ? details : swList.map(n => ({ name: n }))).map(s => {
                 const c    = SW_COLORS[s.name] || { bg: '#f3f4f6', text: '#374151' };
@@ -273,21 +274,58 @@
                 </div>`;
             }).join('');
 
+            // 動画サムネイル（YouTube通常・Shorts・TikTok対応）
             const videoHTML = videos.length > 0 ? `
                 <div class="portfolio-section">
                     <h4>作品サンプル</h4>
                     <div class="video-thumbnails">
-                        ${videos.slice(0,3).map(v => `
-                            <div class="video-thumb" onclick="alert('動画プレビュー')">
-                                <img src="https://img.youtube.com/vi/${v.id}/maxresdefault.jpg" alt="${v.title||''}">
+                        ${videos.slice(0,3).map(v => {
+                            const isYt = v.type === 'youtube' || v.type === 'youtube_shorts' || !v.type;
+                            const ytId = v.id;
+                            const thumb = isYt
+                                ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg`
+                                : `https://api.dicebear.com/7.x/icons/svg?seed=tiktok${v.id}&backgroundColor=000000`;
+                            const link = v.type === 'youtube_shorts'
+                                ? `https://youtube.com/shorts/${ytId}`
+                                : v.type === 'tiktok'
+                                    ? (v.url || '#')
+                                    : `https://youtube.com/watch?v=${ytId}`;
+                            const badge = v.type === 'youtube_shorts' ? 'Shorts' : v.type === 'tiktok' ? 'TikTok' : 'YouTube';
+                            const badgeBg = v.type === 'tiktok' ? '#000' : '#ff0000';
+                            return `<a href="${link}" target="_blank" rel="noopener" class="video-thumb" style="display:block; text-decoration:none; position:relative;">
+                                <img src="${thumb}" alt="${badge}">
                                 <div class="play-icon">▶</div>
-                            </div>`).join('')}
+                                <span style="position:absolute;bottom:4px;left:4px;background:${badgeBg};color:white;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;">${badge}</span>
+                            </a>`;
+                        }).join('')}
                     </div>
+                </div>` : '';
+
+            // SNSリンク
+            const snsLinks = [
+                { key: 'youtube',   icon: '▶️', label: 'YouTube',   color: '#ef4444' },
+                { key: 'tiktok',    icon: '🎵', label: 'TikTok',    color: '#1f2937' },
+                { key: 'instagram', icon: '📸', label: 'Instagram', color: '#e1306c' },
+                { key: 'x',         icon: '🐦', label: 'X',         color: '#374151' },
+            ].filter(s => sns[s.key]);
+
+            const snsHTML = snsLinks.length > 0 ? `
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin:12px 0;">
+                    ${snsLinks.map(s => `
+                        <a href="${sns[s.key]}" target="_blank" rel="noopener"
+                            style="display:inline-flex; align-items:center; gap:5px; padding:6px 12px; border-radius:12px; border:2px solid #e5e7eb; background:#f9fafb; color:${s.color}; font-size:0.8em; font-weight:700; text-decoration:none; transition:all 0.2s;"
+                            onmouseover="this.style.borderColor='${s.color}'; this.style.background='#f0f9ff';"
+                            onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='#f9fafb';">
+                            ${s.icon} ${s.label}
+                        </a>`).join('')}
                 </div>` : '';
 
             const avatar = e.image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(e.name)}`;
             const osBadgeClass = os.toLowerCase() === 'mac' ? 'os-mac' : 'os-windows';
             const osLabel      = os.toLowerCase() === 'mac' ? '🍎 Mac' : '🪟 Windows';
+            const rating   = e.rating   != null ? `⭐ ${e.rating}` : '';
+            const projects = e.projects != null ? `${e.projects}件の実績` : '';
+            const ratingStr = [rating, projects].filter(Boolean).join(' • ');
 
             return `
             <div class="editor-card" data-os="${os}" data-software="${swList.join(',')}">
@@ -296,7 +334,7 @@
                     <div class="editor-info">
                         <h3>${e.name}</h3>
                         <div class="specialty">${e.specialty || ''}</div>
-                        <div class="rating">⭐ ${e.rating || '-'} • 経験 ${e.experience || '-'} • ${e.projects || 0}件の実績</div>
+                        <div class="rating">${ratingStr}</div>
                         <span class="os-badge ${osBadgeClass}">${osLabel}</span>
                     </div>
                 </div>
@@ -305,6 +343,7 @@
                     <div class="software-tags">${swHTML || '<span style="color:#9ca3af;">未設定</span>'}</div>
                 </div>
                 <p style="margin:20px 0; color:#6b7280; line-height:1.6;">${e.description || ''}</p>
+                ${snsHTML}
                 ${videoHTML}
                 <div class="editor-footer">
                     <div>
