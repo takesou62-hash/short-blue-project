@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shorts Match - 制作依頼・相談</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 60%, #e0e7ff 100%); }
+        .gradient-btn { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
+        .card { background: white; border-radius: 24px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
+        .fade-in { animation: fadeIn 0.5s ease both; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        input:focus, textarea:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.1); outline: none; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
+
+<header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
+    <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="index.html" class="font-black text-xl text-cyan-600">Shorts Match</a>
+        <a href="index.html" class="text-sm font-bold text-slate-500">キャンセル</a>
+    </div>
+</header>
+
+<main class="max-w-2xl mx-auto px-4 py-12">
+    <div class="card p-8 fade-in">
+        <div class="flex items-center gap-4 mb-8">
+            <img id="editorAvatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=editor" class="w-16 h-16 rounded-2xl border-2 border-cyan-100 object-cover">
+            <div>
+                <h1 class="text-2xl font-black text-slate-800">制作を相談する</h1>
+                <p class="text-sm text-slate-500" id="editorNameDisplay">読み込み中...</p>
+            </div>
+        </div>
+
+        <form id="requestForm" class="space-y-6">
+            <div>
+                <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">依頼ジャンル</label>
+                <select id="genre" class="w-full px-4 py-3 border-2 border
