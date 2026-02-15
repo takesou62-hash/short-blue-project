@@ -12,11 +12,11 @@
         .gradient-bg { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 60%, #e0e7ff 100%); }
         .gradient-btn { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
         .card { background: white; border-radius: 24px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
-        /* ソフト選択用チップのスタイル */
         .tool-chip input[type=checkbox] { display:none; }
         .tool-chip input:checked + label {
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
             color: white; border-color: transparent;
+            box-shadow: 0 2px 8px rgba(6,182,212,0.4);
         }
         .tool-chip label {
             display: inline-block; padding: 6px 14px; border-radius: 20px;
@@ -24,8 +24,152 @@
             color: #475569; font-size: 13px; font-weight: 700;
             cursor: pointer; transition: all 0.2s;
         }
+        .avatar-ring { border: 4px solid white; box-shadow: 0 0 0 3px #06b6d4, 0 8px 24px rgba(6,182,212,0.3); }
+        .section-tab { cursor: pointer; padding: 10px 20px; border-radius: 12px; font-weight: 700; font-size: 14px; transition: all 0.2s; }
+        .section-tab.active { background: linear-gradient(135deg, #06b6d4, #3b82f6); color: white; }
+        .section-tab:not(.active) { color: #64748b; }
+        .thumb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .thumb-item { position: relative; border-radius: 10px; overflow: hidden; aspect-ratio: 9/16; background: #f1f5f9; }
     </style>
 </head>
 <body class="gradient-bg min-h-screen">
-    </body>
+
+<header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100 px-6 py-4">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-2 font-black text-xl text-cyan-600">Shorts Match</a>
+        <a href="index.html" class="text-sm font-bold text-slate-500 hover:text-cyan-600">← トップへ</a>
+    </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-8">
+    <div id="authSection" class="max-w-md mx-auto card p-8 hidden">
+        <h1 class="text-2xl font-black text-center mb-6">ログイン / 新規登録</h1>
+        <input id="loginEmail" type="email" placeholder="メールアドレス" class="w-full mb-4 px-4 py-3 border-2 rounded-xl">
+        <input id="loginPassword" type="password" placeholder="パスワード" class="w-full mb-6 px-4 py-3 border-2 rounded-xl">
+        <button onclick="handleLogin()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold">ログイン</button>
+    </div>
+
+    <div id="mypageSection" class="hidden">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="space-y-6">
+                <div class="card p-6 text-center">
+                    <img id="avatarImg" src="" class="w-24 h-24 rounded-2xl avatar-ring mx-auto mb-4 object-cover">
+                    <h2 id="mypageName" class="text-xl font-black text-slate-800"></h2>
+                    <p id="mypageEmail" class="text-cyan-500 text-sm mb-4"></p>
+                    <button onclick="handleLogout()" class="text-slate-400 text-xs font-bold border rounded-lg px-3 py-1">ログアウト</button>
+                </div>
+            </div>
+
+            <div class="md:col-span-2 space-y-6">
+                <div class="card p-2 flex gap-1">
+                    <button class="section-tab active" onclick="switchSection('profile', this)">📝 プロフィール</button>
+                    <button class="section-tab" onclick="switchSection('portfolio', this)">🎬 実績</button>
+                </div>
+
+                <div id="sectionProfile" class="card p-8 space-y-6">
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 mb-3 uppercase">使用可能ソフト</label>
+                        <div id="toolsChips" class="flex flex-wrap gap-2"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <input id="mpName" type="text" placeholder="名前" class="px-4 py-3 border-2 rounded-xl">
+                        <input id="mpPrice" type="text" placeholder="単価目安" class="px-4 py-3 border-2 rounded-xl">
+                    </div>
+                    <input id="imageUrlInput" type="url" placeholder="画像URL" class="w-full px-4 py-3 border-2 rounded-xl">
+                    <button onclick="handleUpdate()" class="w-full gradient-btn text-white py-4 rounded-2xl font-black shadow-lg shadow-cyan-200">💾 保存する</button>
+                </div>
+
+                <div id="sectionPortfolio" class="hidden card p-8">
+                    <h3 class="font-black mb-4">🎬 YouTube URL追加</h3>
+                    <div class="flex gap-2 mb-6">
+                        <input id="ytUrlInput" type="url" class="flex-1 px-4 py-3 border-2 rounded-xl" placeholder="https://...">
+                        <button onclick="addVideo()" class="px-6 gradient-btn text-white rounded-xl font-bold">追加</button>
+                    </div>
+                    <div id="thumbGallery" class="thumb-grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    const SUPABASE_URL = 'https://dwmgwdhunvanrsautvtj.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const toolList = ['Premiere Pro', 'After Effects', 'DaVinci Resolve', 'Final Cut Pro', 'LumaFusion', 'Vrew', 'CapCut', 'Photoshop', 'Canva', 'VEGAS Pro', 'Avid', 'AviUtl', 'Blender'];
+    let videoList = [];
+
+    window.onload = async () => {
+        renderToolChips();
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) { await loadMypage(session.user); } else { document.getElementById('authSection').classList.remove('hidden'); }
+    };
+
+    function renderToolChips() {
+        document.getElementById('toolsChips').innerHTML = toolList.map(t => `
+            <span class="tool-chip"><input type="checkbox" id="t-${t}" value="${t}"><label for="t-${t}">${t}</label></span>
+        `).join('');
+    }
+
+    async function loadMypage(user) {
+        document.getElementById('mypageSection').classList.remove('hidden');
+        document.getElementById('mypageEmail').textContent = user.email;
+        const { data } = await sb.from('editors').select('*').eq('id', user.id).maybeSingle();
+        if (data) {
+            document.getElementById('mpName').value = data.name || '';
+            document.getElementById('mpPrice').value = data.price || '';
+            document.getElementById('imageUrlInput').value = data.image_url || '';
+            document.getElementById('mypageName').textContent = data.name || '未設定';
+            document.getElementById('avatarImg').src = data.image_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sota';
+            const tools = data.tools || [];
+            document.querySelectorAll('#toolsChips input').forEach(cb => cb.checked = tools.includes(cb.value));
+            videoList = data.sample_videos || [];
+            renderGallery();
+        }
+    }
+
+    async function handleUpdate() {
+        const { data: { user } } = await sb.auth.getUser();
+        const tools = Array.from(document.querySelectorAll('#toolsChips input:checked')).map(cb => cb.value);
+        const { error } = await sb.from('editors').upsert({
+            id: user.id,
+            name: document.getElementById('mpName').value,
+            price: document.getElementById('mpPrice').value,
+            image_url: document.getElementById('imageUrlInput').value,
+            tools: tools
+        });
+        if (!error) alert('保存しました！');
+    }
+
+    function addVideo() {
+        const url = document.getElementById('ytUrlInput').value;
+        if (url) {
+            videoList.push({ url });
+            renderGallery();
+            document.getElementById('ytUrlInput').value = '';
+        }
+    }
+
+    function renderGallery() {
+        document.getElementById('thumbGallery').innerHTML = videoList.map(v => `<div class="thumb-item flex items-center justify-center text-xs p-2 text-slate-400">Video Added</div>`).join('');
+    }
+
+    function switchSection(sec, btn) {
+        document.querySelectorAll('.section-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('sectionProfile').classList.toggle('hidden', sec !== 'profile');
+        document.getElementById('sectionPortfolio').classList.toggle('hidden', sec !== 'portfolio');
+    }
+
+    async function handleLogin() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (!error) location.reload(); else alert(error.message);
+    }
+
+    async function handleLogout() { await sb.auth.signOut(); location.reload(); }
+</script>
+</body>
 </html>
