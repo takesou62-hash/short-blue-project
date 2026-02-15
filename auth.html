@@ -3,333 +3,608 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shorts Match - ログイン / マイページ</title>
+    <title>Shorts Match - マイページ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        .gradient-bg { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); }
-        .gradient-btn { background: linear-gradient(to right, #06b6d4, #3b82f6); }
-        .fade-in { animation: fadeIn 0.4s ease both; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(12px); }
-            to   { opacity: 1; transform: translateY(0); }
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 60%, #e0e7ff 100%); }
+        .gradient-btn { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
+        .gradient-text { background: linear-gradient(135deg, #06b6d4, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card { background: white; border-radius: 24px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
+        .fade-in { animation: fadeIn 0.5s ease both; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        .slide-down { animation: slideDown 0.3s ease both; }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+        .tool-chip input[type=checkbox] { display:none; }
+        .tool-chip input:checked + label {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white; border-color: transparent;
+            box-shadow: 0 2px 8px rgba(6,182,212,0.4);
         }
-        .slide-down { animation: slideDown 0.4s ease both; }
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-8px); }
-            to   { opacity: 1; transform: translateY(0); }
+        .tool-chip label {
+            display: inline-block; padding: 6px 14px; border-radius: 20px;
+            border: 2px solid #e2e8f0; background: #f8fafc;
+            color: #475569; font-size: 13px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; user-select: none;
+        }
+        .tool-chip label:hover { border-color: #06b6d4; color: #06b6d4; }
+        .genre-chip input[type=checkbox] { display:none; }
+        .genre-chip input:checked + label {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            color: white; border-color: transparent;
+        }
+        .genre-chip label {
+            display: inline-block; padding: 6px 14px; border-radius: 20px;
+            border: 2px solid #e2e8f0; background: #f8fafc;
+            color: #475569; font-size: 13px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; user-select: none;
+        }
+        .tab-active { background: white; color: #1e293b; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .tab-inactive { color: #94a3b8; }
+        .avatar-ring {
+            border: 4px solid white;
+            box-shadow: 0 0 0 3px #06b6d4, 0 8px 24px rgba(6,182,212,0.3);
+        }
+        .preview-card {
+            background: white; border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            overflow: hidden; transition: transform 0.3s;
+        }
+        .preview-card:hover { transform: translateY(-4px); }
+        .thumb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .thumb-item { position: relative; border-radius: 10px; overflow: hidden; aspect-ratio: 9/16; }
+        .thumb-item img { width:100%; height:100%; object-fit:cover; }
+        .thumb-play {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.2s;
+        }
+        .thumb-item:hover .thumb-play { opacity: 1; }
+        .section-tab { cursor: pointer; padding: 10px 20px; border-radius: 12px; font-weight: 700; font-size: 14px; transition: all 0.2s; }
+        .section-tab.active { background: linear-gradient(135deg, #06b6d4, #3b82f6); color: white; }
+        .section-tab:not(.active) { color: #64748b; }
+        .section-tab:not(.active):hover { background: #f1f5f9; }
+        input[type=text], input[type=url], input[type=email], input[type=password] {
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, textarea:focus {
+            box-shadow: 0 0 0 3px rgba(6,182,212,0.15);
+        }
+        @media (min-width: 768px) {
+            .mypage-layout { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
         }
     </style>
 </head>
 <body class="gradient-bg min-h-screen">
 
-    <!-- ヘッダー -->
-    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
-        <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-            <!-- ロゴ（トップページへの導線） -->
-            <a href="index.html" class="flex items-center gap-2 group">
-                <div class="w-8 h-8 gradient-btn rounded-lg flex items-center justify-center text-white text-sm font-bold shadow group-hover:scale-110 transition-transform">▶</div>
-                <span class="font-black text-xl text-cyan-600 group-hover:text-cyan-500 transition-colors">Shorts Match</span>
-            </a>
-            <!-- トップページへのリンク -->
-            <a href="index.html"
-               class="flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-cyan-600 transition-colors px-4 py-2 rounded-xl hover:bg-cyan-50">
-                ← トップページへ
-            </a>
+<!-- ヘッダー -->
+<header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-2 group">
+            <div class="w-8 h-8 gradient-btn rounded-lg flex items-center justify-center text-white text-sm font-black shadow group-hover:scale-110 transition-transform">▶</div>
+            <span class="font-black text-xl text-cyan-600">Shorts Match</span>
+        </a>
+        <div class="flex items-center gap-3">
+            <span id="headerEmail" class="text-xs text-slate-400 hidden md:block"></span>
+            <a href="index.html" class="text-sm font-bold text-slate-500 hover:text-cyan-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-cyan-50">← トップ</a>
         </div>
-    </header>
+    </div>
+</header>
 
-    <main class="max-w-md mx-auto px-6 py-12">
+<main class="max-w-6xl mx-auto px-4 py-8">
 
-        <!-- ===== ログイン / 新規登録 ===== -->
-        <div id="authSection" class="fade-in">
-            <div class="text-center mb-8">
-                <div class="w-16 h-16 gradient-btn rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-4 shadow-lg shadow-cyan-200">✏️</div>
-                <h1 class="text-3xl font-black text-slate-800 mb-2">編集者ポータル</h1>
-                <p class="text-slate-500">ログインまたは新規登録をしてください</p>
+    <!-- ===== ログイン / 新規登録 ===== -->
+    <div id="authSection" class="max-w-md mx-auto fade-in">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 gradient-btn rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-4 shadow-lg shadow-cyan-200">✏️</div>
+            <h1 class="text-3xl font-black text-slate-800 mb-2">編集者ポータル</h1>
+            <p class="text-slate-500">ログインまたは新規登録をしてください</p>
+        </div>
+        <div class="card p-8">
+            <div class="flex rounded-2xl bg-slate-100 p-1 mb-8">
+                <button id="tabLogin" onclick="switchTab('login')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all tab-active">ログイン</button>
+                <button id="tabRegister" onclick="switchTab('register')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all tab-inactive">新規登録</button>
             </div>
-
-            <div class="bg-white rounded-3xl shadow-xl p-8">
-                <!-- タブ -->
-                <div class="flex rounded-2xl bg-slate-100 p-1 mb-8">
-                    <button id="tabLogin"
-                        onclick="switchTab('login')"
-                        class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-white text-slate-800 shadow-sm">
-                        ログイン
-                    </button>
-                    <button id="tabRegister"
-                        onclick="switchTab('register')"
-                        class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-500">
-                        新規登録
-                    </button>
+            <!-- ログイン -->
+            <div id="loginForm" class="space-y-4">
+                <input id="loginEmail" type="email" placeholder="メールアドレス"
+                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                <input id="loginPassword" type="password" placeholder="パスワード"
+                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                <div id="loginMsg" class="hidden text-sm font-bold px-4 py-3 rounded-xl"></div>
+                <button onclick="handleLogin()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:scale-[1.02] hover:opacity-90 transition-all">ログイン</button>
+            </div>
+            <!-- 新規登録 -->
+            <div id="registerForm" class="hidden space-y-4">
+                <div>
+                    <input id="regName" type="text" placeholder="お名前（表示名）"
+                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    <p class="text-xs text-slate-400 mt-1.5 px-1">✦ 編集者一覧カードに表示される名前です</p>
                 </div>
+                <input id="regEmail" type="email" placeholder="メールアドレス"
+                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                <input id="regPassword" type="password" placeholder="パスワード（6文字以上）"
+                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                <div id="registerMsg" class="hidden text-sm font-bold px-4 py-3 rounded-xl"></div>
+                <button onclick="handleRegister()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:scale-[1.02] hover:opacity-90 transition-all">アカウントを作成</button>
+            </div>
+        </div>
+    </div>
 
-                <!-- ログインフォーム -->
-                <div id="loginForm" class="space-y-4">
-                    <input id="loginEmail" type="email" placeholder="メールアドレス"
-                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 transition-all">
-                    <input id="loginPassword" type="password" placeholder="パスワード"
-                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 transition-all">
-                    <div id="loginMsg" class="hidden text-sm font-bold px-4 py-3 rounded-xl"></div>
-                    <button onclick="handleLogin()"
-                        class="w-full gradient-btn text-white py-4 rounded-2xl font-bold text-base shadow-lg shadow-cyan-200 hover:scale-[1.02] hover:opacity-90 transition-all">
-                        ログイン
-                    </button>
-                </div>
+    <!-- ===== マイページ ===== -->
+    <div id="mypageSection" class="hidden fade-in">
+        <div class="mypage-layout">
 
-                <!-- 新規登録フォーム -->
-                <div id="registerForm" class="hidden space-y-4">
-                    <!-- お名前（表示名）- 目立つ位置に配置 -->
-                    <div>
-                        <input id="regName" type="text" placeholder="お名前（表示名）"
-                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 transition-all">
-                        <p class="text-xs text-slate-400 mt-1.5 px-1">✦ 編集者一覧カードに表示される名前です</p>
+            <!-- 左カラム：プロフィールカード＋プレビュー -->
+            <div class="space-y-5">
+
+                <!-- プロフィールカード -->
+                <div class="card p-6 text-center">
+                    <!-- アバター -->
+                    <div class="relative inline-block mb-4">
+                        <img id="avatarImg" src="" alt="avatar"
+                            class="w-24 h-24 rounded-2xl avatar-ring object-cover mx-auto">
+                        <div class="absolute -bottom-1 -right-1 w-7 h-7 gradient-btn rounded-full flex items-center justify-center text-white text-xs shadow cursor-pointer"
+                            onclick="document.getElementById('imageUrlInput').focus()">✏️</div>
                     </div>
-                    <input id="regEmail" type="email" placeholder="メールアドレス"
-                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 transition-all">
-                    <input id="regPassword" type="password" placeholder="パスワード（6文字以上）"
-                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 transition-all">
-                    <div id="registerMsg" class="hidden text-sm font-bold px-4 py-3 rounded-xl"></div>
-                    <button onclick="handleRegister()"
-                        class="w-full gradient-btn text-white py-4 rounded-2xl font-bold text-base shadow-lg shadow-cyan-200 hover:scale-[1.02] hover:opacity-90 transition-all">
-                        アカウントを作成
+                    <h2 class="text-xl font-black text-slate-800 mt-3" id="mypageName">読み込み中...</h2>
+                    <p class="text-cyan-500 font-bold text-sm mt-1" id="mypageEmail"></p>
+                    <!-- ツールバッジ -->
+                    <div id="profileToolBadges" class="flex flex-wrap gap-1.5 justify-center mt-3"></div>
+                    <!-- 単価 -->
+                    <div id="profilePrice" class="mt-3 text-2xl font-black gradient-text"></div>
+                    <button onclick="handleLogout()"
+                        class="mt-4 w-full text-slate-400 text-sm py-2.5 rounded-xl border-2 border-slate-100 hover:text-red-500 hover:border-red-100 transition-all font-bold">
+                        ログアウト
                     </button>
                 </div>
+
+                <!-- 公開プレビュー -->
+                <div class="card p-5">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="text-base font-black text-slate-700">👁 公開プレビュー</span>
+                        <span class="text-xs bg-cyan-100 text-cyan-600 font-bold px-2 py-0.5 rounded-full">他のユーザーから見た姿</span>
+                    </div>
+                    <div class="preview-card">
+                        <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
+                        <div class="p-4">
+                            <div class="flex items-center gap-3 mb-3">
+                                <img id="previewAvatar" src="" class="w-12 h-12 rounded-xl object-cover border-2 border-cyan-100">
+                                <div>
+                                    <div class="font-black text-slate-800 text-sm" id="previewName">未設定</div>
+                                    <div class="text-xs text-cyan-500 font-bold" id="previewGenres">得意ジャンル未設定</div>
+                                </div>
+                            </div>
+                            <div id="previewTools" class="flex flex-wrap gap-1 mb-3"></div>
+                            <div class="flex justify-between items-center pt-2 border-t border-slate-50">
+                                <div class="text-xs text-slate-400">単価目安</div>
+                                <div class="font-black text-cyan-600 text-sm" id="previewPrice">未設定</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 右カラム：タブ切り替えコンテンツ -->
+            <div class="space-y-5">
+
+                <!-- タブナビ -->
+                <div class="card p-2 flex gap-1">
+                    <button class="section-tab active" onclick="switchSection('profile', this)">📝 プロフィール編集</button>
+                    <button class="section-tab" onclick="switchSection('portfolio', this)">🎬 ポートフォリオ</button>
+                </div>
+
+                <!-- ===== プロフィール編集 ===== -->
+                <div id="sectionProfile" class="card p-7 space-y-6">
+
+                    <!-- アバターURL -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">プロフィール画像URL</label>
+                        <div class="flex gap-3">
+                            <input id="imageUrlInput" type="url" placeholder="https://example.com/avatar.jpg"
+                                class="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 text-sm"
+                                oninput="previewAvatar(this.value)">
+                            <button onclick="randomAvatar()"
+                                class="px-4 py-3 bg-gradient-to-r from-violet-500 to-pink-500 text-white rounded-xl font-bold text-sm whitespace-nowrap hover:opacity-90 transition-all shadow-lg shadow-violet-200">
+                                🎲 自動生成
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1.5 px-1">URLを空欄にして「自動生成」を押すと DiceBear アバターを生成します</p>
+                    </div>
+
+                    <!-- 表示名 -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">表示名 <span class="text-red-400">*</span></label>
+                        <input id="mpName" type="text" placeholder="例：山田 太郎"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    </div>
+
+                    <!-- 単価 -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">単価目安</label>
+                        <input id="mpPrice" type="text" placeholder="例：¥3,000〜"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    </div>
+
+                    <!-- 使用可能ソフト -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-3">使用可能ソフト</label>
+                        <div class="flex flex-wrap gap-2" id="toolsChips">
+                            <span class="tool-chip"><input type="checkbox" id="sw1" value="Premiere Pro"><label for="sw1">🎬 Premiere Pro</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw2" value="After Effects"><label for="sw2">✨ After Effects</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw3" value="Final Cut Pro"><label for="sw3">🎥 Final Cut Pro</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw4" value="DaVinci Resolve"><label for="sw4">🎞️ DaVinci Resolve</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw5" value="Photoshop"><label for="sw5">🎨 Photoshop</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw6" value="Cinema 4D"><label for="sw6">🎭 Cinema 4D</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw7" value="CapCut"><label for="sw7">📱 CapCut</label></span>
+                        </div>
+                    </div>
+
+                    <!-- 得意ジャンル -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-3">得意ジャンル</label>
+                        <div class="flex flex-wrap gap-2" id="genreChips">
+                            <span class="genre-chip"><input type="checkbox" id="g1" value="Shortsゲーム実況"><label for="g1">🎮 ゲーム実況</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g2" value="VTuber"><label for="g2">🌟 VTuber</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g3" value="料理・グルメ"><label for="g3">🍜 料理・グルメ</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g4" value="旅行・Vlog"><label for="g4">✈️ 旅行・Vlog</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g5" value="教育・ハウツー"><label for="g5">📚 教育・ハウツー</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g6" value="音楽・ダンス"><label for="g6">🎵 音楽・ダンス</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g7" value="スポーツ"><label for="g7">⚽ スポーツ</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g8" value="切り抜き"><label for="g8">✂️ 切り抜き</label></span>
+                        </div>
+                    </div>
+
+                    <!-- ポートフォリオURL -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">ポートフォリオURL</label>
+                        <input id="mpPortfolioUrl" type="url" placeholder="https://youtube.com/@yourhandle"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    </div>
+
+                    <!-- ステータス -->
+                    <div id="mypageStatus" class="hidden text-sm font-bold px-4 py-3 rounded-xl text-center slide-down"></div>
+
+                    <button onclick="handleUpdate()"
+                        class="w-full gradient-btn text-white py-4 rounded-2xl font-black text-base shadow-lg shadow-cyan-200 hover:scale-[1.02] hover:opacity-90 transition-all">
+                        💾 プロフィールを保存する
+                    </button>
+                </div>
+
+                <!-- ===== ポートフォリオ ===== -->
+                <div id="sectionPortfolio" class="hidden space-y-5">
+
+                    <!-- YouTube URL追加 -->
+                    <div class="card p-7">
+                        <h3 class="font-black text-slate-700 mb-4">🎬 YouTube動画を追加</h3>
+                        <div class="flex gap-3">
+                            <input id="ytUrlInput" type="url" placeholder="https://youtube.com/watch?v=..."
+                                class="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 text-sm">
+                            <button onclick="addVideo()"
+                                class="px-5 py-3 gradient-btn text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-cyan-200">
+                                追加
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-2 px-1">YouTube動画のURLを貼り付けてください（最大6件）</p>
+                    </div>
+
+                    <!-- サムネイルギャラリー -->
+                    <div class="card p-7">
+                        <div class="flex items-center justify-between mb-5">
+                            <h3 class="font-black text-slate-700">📸 作品ギャラリー</h3>
+                            <span class="text-xs text-slate-400 font-bold" id="videoCount">0 / 6</span>
+                        </div>
+                        <div id="thumbGallery" class="thumb-grid">
+                            <div class="col-span-3 text-center py-12 text-slate-300">
+                                <div class="text-4xl mb-2">🎬</div>
+                                <p class="text-sm font-bold">動画URLを追加してください</p>
+                            </div>
+                        </div>
+                        <button onclick="saveVideos()"
+                            id="saveVideoBtn"
+                            class="hidden w-full mt-5 gradient-btn text-white py-3.5 rounded-2xl font-black text-sm shadow-lg shadow-cyan-200 hover:scale-[1.02] transition-all">
+                            💾 ギャラリーを保存する
+                        </button>
+                        <div id="videoStatus" class="hidden text-sm font-bold px-4 py-3 rounded-xl text-center slide-down mt-3"></div>
+                    </div>
+
+                </div>
+
             </div>
         </div>
+    </div>
 
-        <!-- ===== マイページ ===== -->
-        <div id="mypageSection" class="hidden fade-in space-y-6">
-            <!-- プロフィールヘッダー -->
-            <div class="text-center">
-                <div class="w-20 h-20 gradient-btn rounded-2xl mx-auto mb-4 flex items-center justify-center text-white text-4xl shadow-lg shadow-cyan-200">
-                    👤
-                </div>
-                <h1 class="text-2xl font-black text-slate-800" id="mypageName">読み込み中...</h1>
-                <p class="text-cyan-600 font-bold text-sm mt-1" id="mypageEmail"></p>
-            </div>
+</main>
 
-            <!-- 編集フォーム -->
-            <div class="bg-white rounded-3xl shadow-xl p-8 space-y-5">
-                <h2 class="text-lg font-bold text-slate-800 border-b border-slate-100 pb-4">プロフィール編集</h2>
+<script>
+    // ===== Supabase =====
+    const SUPABASE_URL = 'https://dwmgwdhunvanrsautvtj.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-2 px-1">表示名 <span class="text-red-400">*</span></label>
-                    <input type="text" id="mpName" placeholder="例：山田 太郎"
-                        class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-cyan-400 outline-none transition-all">
-                </div>
+    let videoList = []; // 動画URL一覧
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-2 px-1">単価目安</label>
-                    <input type="text" id="mpPrice" placeholder="例：¥3,000〜"
-                        class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-cyan-400 outline-none transition-all">
-                </div>
+    // ===== 起動 =====
+    window.addEventListener('load', async () => {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) { await loadMypage(session.user); }
+        else { showAuth(); }
+    });
 
-                <!-- ステータスメッセージ -->
-                <div id="mypageStatus" class="hidden text-sm font-bold px-4 py-3 rounded-xl text-center"></div>
+    // ===== タブ =====
+    function switchTab(tab) {
+        const isLogin = tab === 'login';
+        document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
+        document.getElementById('registerForm').classList.toggle('hidden', isLogin);
+        document.getElementById('tabLogin').className  = `flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${isLogin  ? 'tab-active' : 'tab-inactive'}`;
+        document.getElementById('tabRegister').className = `flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${!isLogin ? 'tab-active' : 'tab-inactive'}`;
+    }
 
-                <button onclick="handleUpdate()"
-                    class="w-full gradient-btn text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:scale-[1.02] hover:opacity-90 transition-all">
-                    保存する
-                </button>
-            </div>
+    // ===== セクションタブ =====
+    function switchSection(section, btn) {
+        document.querySelectorAll('.section-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('sectionProfile').classList.toggle('hidden', section !== 'profile');
+        document.getElementById('sectionPortfolio').classList.toggle('hidden', section !== 'portfolio');
+    }
 
-            <!-- ログアウト -->
-            <button onclick="handleLogout()"
-                class="w-full bg-white text-slate-400 py-4 rounded-2xl font-bold border-2 border-slate-100 hover:text-red-500 hover:border-red-100 transition-all">
-                ログアウト
-            </button>
-        </div>
+    // ===== メッセージ =====
+    function showMsg(elId, msg, type) {
+        const el = document.getElementById(elId);
+        const s = { error:'bg-red-50 text-red-600 border border-red-200', success:'bg-emerald-50 text-emerald-600 border border-emerald-200', info:'bg-cyan-50 text-cyan-600 border border-cyan-200' };
+        el.className = `text-sm font-bold px-4 py-3 rounded-xl slide-down ${s[type]||s.info}`;
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    }
+    function hideMsg(id) { document.getElementById(id).classList.add('hidden'); }
 
-    </main>
+    // ===== ログイン =====
+    async function handleLogin() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        hideMsg('loginMsg');
+        if (!email || !password) { showMsg('loginMsg','⚠️ メールアドレスとパスワードを入力してください','error'); return; }
+        showMsg('loginMsg','⏳ ログイン中...','info');
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) { showMsg('loginMsg','❌ '+error.message,'error'); return; }
+        showMsg('loginMsg','✅ ログインしました！マイページへ移動します','success');
+        setTimeout(() => loadMypage(data.user), 1000);
+    }
 
-    <script>
-        // ===== Supabase設定 =====
-        const SUPABASE_URL = 'https://dwmgwdhunvanrsautvtj.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
-        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // ===== 新規登録 =====
+    async function handleRegister() {
+        const name = document.getElementById('regName').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
+        const password = document.getElementById('regPassword').value;
+        hideMsg('registerMsg');
+        if (!name)               { showMsg('registerMsg','⚠️ お名前（表示名）を入力してください','error'); return; }
+        if (!email)              { showMsg('registerMsg','⚠️ メールアドレスを入力してください','error'); return; }
+        if (password.length < 6) { showMsg('registerMsg','⚠️ パスワードは6文字以上にしてください','error'); return; }
+        showMsg('registerMsg','⏳ アカウントを作成中...','info');
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) { showMsg('registerMsg','❌ '+error.message,'error'); return; }
+        if (data.user) {
+            const { error: dbErr } = await sb.from('editors').upsert({ id: data.user.id, name }, { onConflict: 'id' });
+            if (dbErr) { console.error(dbErr); }
+            showMsg('registerMsg','✅ アカウントを作成しました！マイページへ移動します','success');
+            setTimeout(() => loadMypage(data.user), 2000);
+        } else {
+            showMsg('registerMsg','📩 確認メールを送信しました。','info');
+        }
+    }
 
-        // ===== 起動：セッション確認 =====
-        window.addEventListener('load', async () => {
-            const { data: { session } } = await sb.auth.getSession();
-            if (session) {
-                await loadMypage(session.user);
-            } else {
-                showAuth();
-            }
+    // ===== マイページ読み込み =====
+    async function loadMypage(user) {
+        showMypage();
+        document.getElementById('mypageEmail').textContent = user.email;
+        document.getElementById('headerEmail').textContent = user.email;
+
+        const { data } = await sb.from('editors').select('*').filter('id::text','eq',user.id).maybeSingle();
+        if (!data) { renderMypage({ name: '未設定' }, user); return; }
+
+        // フォームに値をセット
+        document.getElementById('mpName').value        = data.name          || '';
+        document.getElementById('mpPrice').value       = data.price         || '';
+        document.getElementById('imageUrlInput').value = data.image_url     || '';
+        document.getElementById('mpPortfolioUrl').value= data.portfolio_url || '';
+
+        // ツールチェック
+        const tools = Array.isArray(data.tools) ? data.tools : [];
+        document.querySelectorAll('#toolsChips input[type=checkbox]').forEach(cb => {
+            cb.checked = tools.includes(cb.value);
         });
 
-        // ===== タブ切り替え =====
-        function switchTab(tab) {
-            const isLogin = tab === 'login';
-            document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
-            document.getElementById('registerForm').classList.toggle('hidden', isLogin);
-            document.getElementById('tabLogin').className = isLogin
-                ? 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-white text-slate-800 shadow-sm'
-                : 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-500';
-            document.getElementById('tabRegister').className = !isLogin
-                ? 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-white text-slate-800 shadow-sm'
-                : 'flex-1 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-500';
+        // ジャンルチェック
+        const genres = Array.isArray(data.genres) ? data.genres : [];
+        document.querySelectorAll('#genreChips input[type=checkbox]').forEach(cb => {
+            cb.checked = genres.includes(cb.value);
+        });
+
+        // 動画リスト
+        videoList = Array.isArray(data.sample_videos) ? data.sample_videos : [];
+        renderGallery();
+
+        renderMypage(data, user);
+    }
+
+    // ===== UI反映 =====
+    function renderMypage(data, user) {
+        const name   = data.name  || '未設定';
+        const price  = data.price || '';
+        const tools  = Array.isArray(data.tools)  ? data.tools  : [];
+        const genres = Array.isArray(data.genres) ? data.genres : [];
+
+        // アバター
+        const avatarUrl = data.image_url
+            || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+        document.getElementById('avatarImg').src    = avatarUrl;
+        document.getElementById('previewAvatar').src = avatarUrl;
+
+        // 名前・メール
+        document.getElementById('mypageName').textContent = name;
+        document.getElementById('previewName').textContent = name;
+
+        // 単価
+        document.getElementById('profilePrice').textContent = price ? price : '';
+        document.getElementById('previewPrice').textContent = price || '未設定';
+
+        // ジャンル
+        document.getElementById('previewGenres').textContent =
+            genres.length > 0 ? genres.slice(0,2).join(' / ') : '得意ジャンル未設定';
+
+        // ツールバッジ（プロフィールカード）
+        const badgeColors = {
+            'Premiere Pro':'bg-violet-100 text-violet-700',
+            'After Effects':'bg-blue-100 text-blue-700',
+            'Final Cut Pro':'bg-indigo-100 text-indigo-700',
+            'DaVinci Resolve':'bg-red-100 text-red-700',
+            'Photoshop':'bg-sky-100 text-sky-700',
+            'Cinema 4D':'bg-pink-100 text-pink-700',
+            'CapCut':'bg-emerald-100 text-emerald-700',
+        };
+        document.getElementById('profileToolBadges').innerHTML = tools.map(t =>
+            `<span class="text-xs font-bold px-2.5 py-1 rounded-full ${badgeColors[t]||'bg-slate-100 text-slate-600'}">${t}</span>`
+        ).join('');
+
+        // プレビューのツールバッジ
+        const toolIcons = {'Premiere Pro':'🎬','After Effects':'✨','Final Cut Pro':'🎥','DaVinci Resolve':'🎞️','Photoshop':'🎨','Cinema 4D':'🎭','CapCut':'📱'};
+        document.getElementById('previewTools').innerHTML = tools.slice(0,4).map(t =>
+            `<span class="text-xs font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">${toolIcons[t]||'💻'} ${t}</span>`
+        ).join('');
+    }
+
+    // ===== アバタープレビュー =====
+    function previewAvatar(url) {
+        const src = url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`;
+        document.getElementById('avatarImg').src     = src;
+        document.getElementById('previewAvatar').src = src;
+    }
+
+    function randomAvatar() {
+        const styles = ['avataaars','bottts','fun-emoji','lorelei','micah','personas'];
+        const style  = styles[Math.floor(Math.random() * styles.length)];
+        const seed   = Math.random().toString(36).slice(2);
+        const url    = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+        document.getElementById('imageUrlInput').value = url;
+        previewAvatar(url);
+    }
+
+    // ===== プロフィール保存 =====
+    async function handleUpdate() {
+        hideMsg('mypageStatus');
+        const name  = document.getElementById('mpName').value.trim();
+        if (!name) { showMsg('mypageStatus','⚠️ 表示名を入力してください','error'); return; }
+        showMsg('mypageStatus','⏳ 保存中...','info');
+
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) { showMsg('mypageStatus','❌ セッションが切れています','error'); return; }
+
+        const tools  = Array.from(document.querySelectorAll('#toolsChips input:checked')).map(c=>c.value);
+        const genres = Array.from(document.querySelectorAll('#genreChips input:checked')).map(c=>c.value);
+
+        const { error } = await sb.from('editors').upsert({
+            id:            user.id,
+            name,
+            price:         document.getElementById('mpPrice').value.trim()        || null,
+            image_url:     document.getElementById('imageUrlInput').value.trim()  || null,
+            portfolio_url: document.getElementById('mpPortfolioUrl').value.trim() || null,
+            tools,
+            genres,
+        }, { onConflict: 'id' });
+
+        if (error) { console.error(error); showMsg('mypageStatus','❌ '+error.message,'error'); return; }
+
+        // UI反映
+        const currentData = {
+            name, price: document.getElementById('mpPrice').value.trim(),
+            image_url: document.getElementById('imageUrlInput').value.trim(),
+            tools, genres,
+        };
+        renderMypage(currentData, user);
+        showMsg('mypageStatus','✅ プロフィールを保存しました！','success');
+        setTimeout(() => hideMsg('mypageStatus'), 3000);
+    }
+
+    // ===== YouTubeサムネイル =====
+    function getYtId(url) {
+        const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        return m ? m[1] : null;
+    }
+
+    function addVideo() {
+        if (videoList.length >= 6) { alert('動画は最大6件まで追加できます'); return; }
+        const url = document.getElementById('ytUrlInput').value.trim();
+        const id  = getYtId(url);
+        if (!id) { alert('有効なYouTube URLを入力してください'); return; }
+        if (videoList.find(v => v.id === id)) { alert('この動画はすでに追加されています'); return; }
+        videoList.push({ id, url });
+        document.getElementById('ytUrlInput').value = '';
+        renderGallery();
+    }
+
+    function removeVideo(id) {
+        videoList = videoList.filter(v => v.id !== id);
+        renderGallery();
+    }
+
+    function renderGallery() {
+        const gallery = document.getElementById('thumbGallery');
+        const countEl = document.getElementById('videoCount');
+        const saveBtn = document.getElementById('saveVideoBtn');
+        countEl.textContent = `${videoList.length} / 6`;
+        saveBtn.classList.toggle('hidden', videoList.length === 0);
+
+        if (videoList.length === 0) {
+            gallery.innerHTML = `
+                <div class="col-span-3 text-center py-12 text-slate-300">
+                    <div class="text-4xl mb-2">🎬</div>
+                    <p class="text-sm font-bold">動画URLを追加してください</p>
+                </div>`;
+            return;
         }
 
-        // ===== メッセージ表示ヘルパー =====
-        function showMsg(elId, msg, type) {
-            const el = document.getElementById(elId);
-            const styles = {
-                error:   'bg-red-50 text-red-600 border border-red-200',
-                success: 'bg-emerald-50 text-emerald-600 border border-emerald-200',
-                info:    'bg-cyan-50 text-cyan-600 border border-cyan-200',
-            };
-            el.className = `text-sm font-bold px-4 py-3 rounded-xl slide-down ${styles[type] || styles.info}`;
-            el.textContent = msg;
-            el.classList.remove('hidden');
-        }
-        function hideMsg(elId) {
-            document.getElementById(elId).classList.add('hidden');
-        }
+        gallery.innerHTML = videoList.map(v => `
+            <div class="thumb-item group">
+                <img src="https://img.youtube.com/vi/${v.id}/mqdefault.jpg" alt="thumbnail">
+                <div class="thumb-play">
+                    <span class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-lg">▶</span>
+                </div>
+                <button onclick="removeVideo('${v.id}')"
+                    class="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full text-xs font-black hidden group-hover:flex items-center justify-center shadow">✕</button>
+            </div>`).join('');
+    }
 
-        // ===== ログイン =====
-        async function handleLogin() {
-            const email    = document.getElementById('loginEmail').value.trim();
-            const password = document.getElementById('loginPassword').value;
-            hideMsg('loginMsg');
+    async function saveVideos() {
+        hideMsg('videoStatus');
+        showMsg('videoStatus','⏳ 保存中...','info');
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) { showMsg('videoStatus','❌ セッションが切れています','error'); return; }
+        const { error } = await sb.from('editors').upsert({
+            id: user.id,
+            sample_videos: videoList,
+        }, { onConflict: 'id' });
+        if (error) { showMsg('videoStatus','❌ '+error.message,'error'); return; }
+        showMsg('videoStatus','✅ ギャラリーを保存しました！','success');
+        setTimeout(() => hideMsg('videoStatus'), 3000);
+    }
 
-            if (!email || !password) {
-                showMsg('loginMsg', '⚠️ メールアドレスとパスワードを入力してください', 'error');
-                return;
-            }
+    // ===== ログアウト =====
+    async function handleLogout() {
+        await sb.auth.signOut();
+        showAuth();
+    }
 
-            showMsg('loginMsg', '⏳ ログイン中...', 'info');
-
-            const { data, error } = await sb.auth.signInWithPassword({ email, password });
-            if (error) {
-                showMsg('loginMsg', '❌ ' + error.message, 'error');
-                return;
-            }
-
-            // ✅ ログイン成功 → マイページへ遷移
-            showMsg('loginMsg', '✅ ログインしました！マイページへ移動します', 'success');
-            setTimeout(async () => {
-                await loadMypage(data.user);
-            }, 1000);
-        }
-
-        // ===== 新規登録 =====
-        async function handleRegister() {
-            const name     = document.getElementById('regName').value.trim();
-            const email    = document.getElementById('regEmail').value.trim();
-            const password = document.getElementById('regPassword').value;
-            hideMsg('registerMsg');
-
-            // バリデーション
-            if (!name)               { showMsg('registerMsg', '⚠️ お名前（表示名）を入力してください', 'error'); return; }
-            if (!email)              { showMsg('registerMsg', '⚠️ メールアドレスを入力してください', 'error'); return; }
-            if (password.length < 6) { showMsg('registerMsg', '⚠️ パスワードは6文字以上にしてください', 'error'); return; }
-
-            showMsg('registerMsg', '⏳ アカウントを作成中...', 'info');
-
-            // ① Supabase Authでユーザー作成
-            const { data, error } = await sb.auth.signUp({ email, password });
-            if (error) {
-                showMsg('registerMsg', '❌ ' + error.message, 'error');
-                return;
-            }
-
-            if (data.user) {
-                // ② editorsテーブルにname（表示名）を保存
-                // id を明示的に含めてupsertし、UUIDとBigintの型不一致を防ぐ
-                const { error: dbError } = await sb.from('editors').upsert({
-                    id:   data.user.id,   // UUIDをそのまま渡す
-                    name: name,
-                }, { onConflict: 'id' });
-
-                if (dbError) {
-                    console.error('editors upsert error:', dbError);
-                    // Auth作成は成功しているので警告のみ
-                    showMsg('registerMsg', '⚠️ アカウントは作成しましたが、名前の保存に失敗しました', 'error');
-                } else {
-                    // ✅ 成功メッセージ → 2秒後にマイページへ自動遷移
-                    showMsg('registerMsg', '✅ アカウントを作成しました！マイページへ移動します', 'success');
-                    setTimeout(async () => {
-                        await loadMypage(data.user);
-                    }, 2000);
-                }
-            } else {
-                // メール確認が必要なケース
-                showMsg('registerMsg', '📩 確認メールを送信しました。メールを確認してログインしてください。', 'info');
-            }
-        }
-
-        // ===== マイページ読み込み =====
-        async function loadMypage(user) {
-            showMypage();
-            document.getElementById('mypageEmail').textContent = user.email;
-
-            const { data, error } = await sb
-                .from('editors')
-                .select('*')
-                .filter('id::text', 'eq', user.id)   // auth.uid()::text = id::text でキャスト
-                .maybeSingle();
-
-            console.log('[mypage] data:', data, 'error:', error);
-
-            if (data) {
-                document.getElementById('mypageName').textContent = data.name  || '未設定';
-                document.getElementById('mpName').value           = data.name  || '';
-                document.getElementById('mpPrice').value          = data.price || '';
-            } else {
-                document.getElementById('mypageName').textContent = '未設定';
-            }
-        }
-
-        // ===== プロフィール更新 =====
-        async function handleUpdate() {
-            const statusEl = document.getElementById('mypageStatus');
-            hideMsg('mypageStatus');
-
-            const name  = document.getElementById('mpName').value.trim();
-            const price = document.getElementById('mpPrice').value.trim();
-
-            if (!name) { showMsg('mypageStatus', '⚠️ 表示名を入力してください', 'error'); return; }
-
-            showMsg('mypageStatus', '⏳ 保存中...', 'info');
-
-            const { data: { user } } = await sb.auth.getUser();
-            if (!user) { showMsg('mypageStatus', '❌ セッションが切れています。再ログインしてください', 'error'); return; }
-
-            // id を含めてupsert（型不一致を防ぐためにidを明示）
-            const { error } = await sb.from('editors').upsert({
-                id:    user.id,
-                name:  name,
-                price: price || null,
-            }, { onConflict: 'id' });
-
-            if (error) {
-                console.error('update error:', error);
-                showMsg('mypageStatus', '❌ エラー：' + error.message, 'error');
-                return;
-            }
-
-            document.getElementById('mypageName').textContent = name;
-            showMsg('mypageStatus', '✅ プロフィールを保存しました！', 'success');
-            setTimeout(() => hideMsg('mypageStatus'), 3000);
-        }
-
-        // ===== ログアウト =====
-        async function handleLogout() {
-            await sb.auth.signOut();
-            showAuth();
-        }
-
-        // ===== UI切り替え =====
-        function showAuth() {
-            document.getElementById('authSection').classList.remove('hidden');
-            document.getElementById('mypageSection').classList.add('hidden');
-        }
-        function showMypage() {
-            document.getElementById('authSection').classList.add('hidden');
-            document.getElementById('mypageSection').classList.remove('hidden');
-        }
-    </script>
+    // ===== UI切り替え =====
+    function showAuth() {
+        document.getElementById('authSection').classList.remove('hidden');
+        document.getElementById('mypageSection').classList.add('hidden');
+    }
+    function showMypage() {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('mypageSection').classList.remove('hidden');
+    }
+</script>
 </body>
 </html>
