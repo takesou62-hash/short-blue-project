@@ -316,8 +316,7 @@
 
                 const { data, error } = await client
                     .from('editors')
-                    .select('*')
-                    .order('rating', { ascending: false });
+                    .select('*');
 
                 console.log('[4] data:', data, '/ error:', error);
                 if (error) throw error;
