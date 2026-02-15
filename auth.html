@@ -309,18 +309,36 @@
                 <!-- ===== ポートフォリオ ===== -->
                 <div id="sectionPortfolio" class="hidden space-y-5">
 
-                    <!-- YouTube URL追加 -->
+                    <!-- 動画URL追加 -->
                     <div class="card p-7">
-                        <h3 class="font-black text-slate-700 mb-4">🎬 YouTube動画を追加</h3>
+                        <h3 class="font-black text-slate-700 mb-1">🎬 動画を追加</h3>
+                        <p class="text-xs text-slate-400 mb-4">YouTube・YouTube Shorts・TikTokのURLに対応しています</p>
+
+                        <!-- 対応プラットフォームバッジ -->
+                        <div class="flex gap-2 mb-4">
+                            <span class="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-100">
+                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.19a3.02 3.02 0 00-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 00.5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 002.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 002.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>
+                                YouTube
+                            </span>
+                            <span class="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-100">
+                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.19a3.02 3.02 0 00-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 00.5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 002.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 002.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>
+                                YouTube Shorts
+                            </span>
+                            <span class="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-slate-800 text-white border border-slate-700">
+                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>
+                                TikTok
+                            </span>
+                        </div>
+
                         <div class="flex gap-3">
-                            <input id="ytUrlInput" type="url" placeholder="https://youtube.com/watch?v=..."
+                            <input id="ytUrlInput" type="url" placeholder="動画のURLを貼り付け..."
                                 class="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 text-sm">
                             <button onclick="addVideo()"
-                                class="px-5 py-3 gradient-btn text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-cyan-200">
+                                class="px-5 py-3 gradient-btn text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-cyan-200 whitespace-nowrap">
                                 追加
                             </button>
                         </div>
-                        <p class="text-xs text-slate-400 mt-2 px-1">YouTube動画のURLを貼り付けてください（最大6件）</p>
+                        <div id="addVideoMsg" class="hidden text-xs font-bold px-3 py-2 rounded-xl mt-2"></div>
                     </div>
 
                     <!-- サムネイルギャラリー -->
@@ -644,31 +662,70 @@
     }
 
     // ===== YouTubeサムネイル =====
-    function getYtId(url) {
-        const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
-        return m ? m[1] : null;
+    // ===== 動画URL解析（YouTube通常・Shorts・TikTok対応）=====
+    function parseVideoUrl(url) {
+        // YouTube通常: watch?v=XXXX or youtu.be/XXXX
+        const ytNormal = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (ytNormal) return { type: 'youtube', id: ytNormal[1] };
+
+        // YouTube Shorts: /shorts/XXXX
+        const ytShorts = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+        if (ytShorts) return { type: 'youtube_shorts', id: ytShorts[1] };
+
+        // TikTok: /@user/video/XXXX or /v/XXXX
+        const tiktok = url.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/);
+        if (tiktok) return { type: 'tiktok', id: tiktok[1], url };
+
+        // TikTok短縮URL: vm.tiktok.com / vt.tiktok.com
+        const tiktokShort = url.match(/(?:vm|vt)\.tiktok\.com\/([a-zA-Z0-9]+)/);
+        if (tiktokShort) return { type: 'tiktok', id: tiktokShort[1], url };
+
+        return null;
     }
 
     function addVideo() {
-        if (videoList.length >= 6) { alert('動画は最大6件まで追加できます'); return; }
-        const url = document.getElementById('ytUrlInput').value.trim();
-        const id  = getYtId(url);
-        if (!id) { alert('有効なYouTube URLを入力してください'); return; }
-        if (videoList.find(v => v.id === id)) { alert('この動画はすでに追加されています'); return; }
-        videoList.push({ id, url });
+        const addMsg = document.getElementById('addVideoMsg');
+        addMsg.classList.add('hidden');
+
+        if (videoList.length >= 6) {
+            addMsg.className = 'text-xs font-bold px-3 py-2 rounded-xl mt-2 bg-red-50 text-red-500 border border-red-100';
+            addMsg.textContent = '⚠️ 動画は最大6件まで追加できます';
+            addMsg.classList.remove('hidden');
+            return;
+        }
+
+        const url    = document.getElementById('ytUrlInput').value.trim();
+        const parsed = parseVideoUrl(url);
+
+        if (!parsed) {
+            addMsg.className = 'text-xs font-bold px-3 py-2 rounded-xl mt-2 bg-red-50 text-red-500 border border-red-100';
+            addMsg.textContent = '❌ 対応していないURLです。YouTube・YouTube Shorts・TikTokのURLを入力してください';
+            addMsg.classList.remove('hidden');
+            return;
+        }
+
+        const key = parsed.type + '_' + parsed.id;
+        if (videoList.find(v => (v.type + '_' + v.id) === key)) {
+            addMsg.className = 'text-xs font-bold px-3 py-2 rounded-xl mt-2 bg-amber-50 text-amber-600 border border-amber-100';
+            addMsg.textContent = '⚠️ この動画はすでに追加されています';
+            addMsg.classList.remove('hidden');
+            return;
+        }
+
+        videoList.push({ type: parsed.type, id: parsed.id, url });
         document.getElementById('ytUrlInput').value = '';
         renderGallery();
     }
 
-    function removeVideo(id) {
-        videoList = videoList.filter(v => v.id !== id);
+    function removeVideo(index) {
+        videoList.splice(index, 1);
         renderGallery();
     }
 
     function renderGallery() {
-        const gallery = document.getElementById('thumbGallery');
-        const countEl = document.getElementById('videoCount');
-        const saveBtn = document.getElementById('saveVideoBtn');
+        const gallery  = document.getElementById('thumbGallery');
+        const countEl  = document.getElementById('videoCount');
+        const saveBtn  = document.getElementById('saveVideoBtn');
         countEl.textContent = `${videoList.length} / 6`;
         saveBtn.classList.toggle('hidden', videoList.length === 0);
 
@@ -681,15 +738,41 @@
             return;
         }
 
-        gallery.innerHTML = videoList.map(v => `
-            <div class="thumb-item group">
-                <img src="https://img.youtube.com/vi/${v.id}/mqdefault.jpg" alt="thumbnail">
-                <div class="thumb-play">
-                    <span class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-lg">▶</span>
-                </div>
-                <button onclick="removeVideo('${v.id}')"
-                    class="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full text-xs font-black hidden group-hover:flex items-center justify-center shadow">✕</button>
-            </div>`).join('');
+        gallery.innerHTML = videoList.map((v, i) => {
+            // サムネイル・バッジ設定
+            let thumbSrc, badge, badgeClass, linkUrl;
+            if (v.type === 'youtube' || v.type === 'youtube_shorts') {
+                thumbSrc   = `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`;
+                badge      = v.type === 'youtube_shorts' ? 'Shorts' : 'YouTube';
+                badgeClass = 'bg-red-500';
+                linkUrl    = v.type === 'youtube_shorts'
+                    ? `https://youtube.com/shorts/${v.id}`
+                    : `https://youtube.com/watch?v=${v.id}`;
+            } else {
+                // TikTok: オフィシャルなサムネイルAPIがないのでプレースホルダー
+                thumbSrc   = `https://api.dicebear.com/7.x/icons/svg?seed=tiktok${v.id}&backgroundColor=000000`;
+                badge      = 'TikTok';
+                badgeClass = 'bg-slate-900';
+                linkUrl    = v.url;
+            }
+
+            return `
+            <div class="thumb-item group relative">
+                <a href="${linkUrl}" target="_blank" rel="noopener">
+                    <img src="${thumbSrc}" alt="thumbnail" class="w-full h-full object-cover">
+                    <div class="thumb-play">
+                        <span class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-lg shadow-lg">▶</span>
+                    </div>
+                </a>
+                <!-- プラットフォームバッジ -->
+                <span class="absolute bottom-1.5 left-1.5 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md ${badgeClass} opacity-90">
+                    ${badge}
+                </span>
+                <!-- 削除ボタン -->
+                <button onclick="removeVideo(${i})"
+                    class="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full text-xs font-black opacity-0 group-hover:opacity-100 flex items-center justify-center shadow transition-opacity">✕</button>
+            </div>`;
+        }).join('');
     }
 
     async function saveVideos() {
