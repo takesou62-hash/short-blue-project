@@ -112,6 +112,95 @@
         .loading-state .icon { font-size: 4em; margin-bottom: 20px; }
         .loading-state h3 { font-size: 1.8em; color: #1f2937; margin-bottom: 10px; }
         .loading-state p { color: #6b7280; font-size: 1.1em; }
+
+        /* ===== モーダル ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: white;
+            border-radius: 25px;
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .modal h2 {
+            font-size: 1.8em; font-weight: 900; color: #1f2937;
+            margin-bottom: 8px;
+        }
+        .modal .modal-sub {
+            color: #6b7280; margin-bottom: 30px; font-size: 0.95em;
+        }
+        .modal-close {
+            position: absolute; top: 20px; right: 20px;
+            background: #f3f4f6; border: none; border-radius: 50%;
+            width: 36px; height: 36px; font-size: 1.2em;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .modal-close:hover { background: #e5e7eb; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block; font-weight: 700; margin-bottom: 8px;
+            color: #374151; font-size: 0.95em;
+        }
+        .form-group label span { color: #ef4444; margin-left: 3px; }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%; padding: 12px 16px;
+            border: 2px solid #e5e7eb; border-radius: 12px;
+            font-size: 1em; font-family: inherit;
+            transition: border-color 0.2s; outline: none;
+            background: #f9fafb;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            border-color: #06b6d4; background: white;
+        }
+        .form-group textarea { resize: vertical; min-height: 100px; }
+        .tools-checkboxes {
+            display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;
+        }
+        .tool-checkbox { display: none; }
+        .tool-label {
+            padding: 8px 16px; border-radius: 12px;
+            border: 2px solid #e5e7eb; background: #f9fafb;
+            color: #374151; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; font-size: 0.9em;
+            user-select: none;
+        }
+        .tool-checkbox:checked + .tool-label {
+            background: linear-gradient(to right, #06b6d4, #3b82f6);
+            color: white; border-color: #06b6d4;
+        }
+        .form-submit {
+            width: 100%; padding: 16px;
+            background: linear-gradient(to right, #06b6d4, #3b82f6);
+            color: white; border: none; border-radius: 20px;
+            font-size: 1.1em; font-weight: 700; cursor: pointer;
+            transition: all 0.3s; margin-top: 10px;
+        }
+        .form-submit:hover { transform: scale(1.02); box-shadow: 0 8px 20px rgba(6,182,212,0.4); }
+        .form-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .form-success {
+            text-align: center; padding: 40px 20px;
+        }
+        .form-success .icon { font-size: 4em; margin-bottom: 20px; }
+        .form-success h3 { font-size: 1.8em; color: #1f2937; margin-bottom: 10px; }
+        .form-success p { color: #6b7280; }
         footer { background: #1f2937; color: #d1d5db; padding: 60px 20px 40px; margin-top: 60px; }
         .footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 40px; max-width: 1200px; margin: 0 auto 40px; }
         .footer-section h4 { color: white; font-size: 1.1em; margin-bottom: 20px; font-weight: 700; }
@@ -138,7 +227,7 @@
             <p>プロの動画編集者とマッチング。<br>使用ソフトから選べて、最短24時間で高品質なショート動画が完成。</p>
             <div style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap; margin-top:30px;">
                 <button class="btn btn-large" onclick="scrollToEditors()">編集者を探す ▶</button>
-                <button class="btn btn-large btn-secondary" onclick="alert('編集者登録フォームを開きます')">編集者として登録</button>
+                <button class="btn btn-large btn-secondary" onclick="openModal()">編集者として登録</button>
             </div>
         </section>
 
@@ -205,7 +294,7 @@
                 <div class="footer-section">
                     <h4>編集者</h4>
                     <ul>
-                        <li><a href="#" onclick="alert('編集者登録'); return false;">編集者登録</a></li>
+                        <li><a href="#" onclick="openModal(); return false;">編集者登録</a></li>
                         <li><a href="#" onclick="alert('手数料について'); return false;">手数料について</a></li>
                         <li><a href="#" onclick="alert('よくある質問'); return false;">よくある質問</a></li>
                     </ul>
@@ -221,6 +310,86 @@
             </div>
             <div class="footer-bottom"><p>&copy; 2026 Shorts Match. All rights reserved.</p></div>
         </footer>
+    </div>
+
+    <!-- ===== 編集者登録モーダル ===== -->
+    <div class="modal-overlay" id="registerModal" onclick="handleOverlayClick(event)">
+        <div class="modal">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            
+            <div id="formContent">
+                <h2>✏️ 編集者として登録</h2>
+                <p class="modal-sub">情報を入力して登録申請してください。<span style="color:#ef4444;">*</span> は必須項目です。</p>
+                
+                <div class="form-group">
+                    <label>お名前 <span>*</span></label>
+                    <input type="text" id="reg_name" placeholder="例：山田 太郎">
+                </div>
+                
+                <div class="form-group">
+                    <label>使用OS <span>*</span></label>
+                    <select id="reg_os">
+                        <option value="">選択してください</option>
+                        <option value="Windows">🪟 Windows</option>
+                        <option value="Mac">🍎 Mac</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>使用ソフト <span>*</span>（複数選択可）</label>
+                    <div class="tools-checkboxes">
+                        <input type="checkbox" class="tool-checkbox" id="t1" value="Premiere Pro">
+                        <label class="tool-label" for="t1">🎬 Premiere Pro</label>
+                        
+                        <input type="checkbox" class="tool-checkbox" id="t2" value="After Effects">
+                        <label class="tool-label" for="t2">✨ After Effects</label>
+                        
+                        <input type="checkbox" class="tool-checkbox" id="t3" value="Final Cut Pro">
+                        <label class="tool-label" for="t3">🎥 Final Cut Pro</label>
+                        
+                        <input type="checkbox" class="tool-checkbox" id="t4" value="DaVinci Resolve">
+                        <label class="tool-label" for="t4">🎞️ DaVinci Resolve</label>
+                        
+                        <input type="checkbox" class="tool-checkbox" id="t5" value="Photoshop">
+                        <label class="tool-label" for="t5">🎨 Photoshop</label>
+                        
+                        <input type="checkbox" class="tool-checkbox" id="t6" value="Cinema 4D">
+                        <label class="tool-label" for="t6">🎭 Cinema 4D</label>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>料金 <span>*</span></label>
+                    <input type="text" id="reg_price" placeholder="例：¥3,000〜">
+                </div>
+                
+                <div class="form-group">
+                    <label>納期</label>
+                    <input type="text" id="reg_turnaround" placeholder="例：2-3日">
+                </div>
+                
+                <div class="form-group">
+                    <label>自己紹介</label>
+                    <textarea id="reg_description" placeholder="得意なジャンルや編集スタイルを教えてください"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>アバター画像URL</label>
+                    <input type="url" id="reg_avatar" placeholder="例：https://example.com/avatar.jpg">
+                </div>
+                
+                <p id="formError" style="color:#ef4444; font-size:0.9em; margin-bottom:10px; display:none;"></p>
+                
+                <button class="form-submit" id="submitBtn" onclick="submitRegister()">登録する</button>
+            </div>
+            
+            <div id="formSuccess" class="form-success" style="display:none;">
+                <div class="icon">🎉</div>
+                <h3>登録が完了しました！</h3>
+                <p style="margin-bottom:30px;">編集者一覧に追加されました。</p>
+                <button class="btn" onclick="closeModal(); fetchEditors();">編集者一覧を更新する</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -412,7 +581,83 @@
             }
         }
 
-        function scrollToEditors() {
+        // ===== モーダル =====
+        function openModal() {
+            document.getElementById('registerModal').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeModal() {
+            document.getElementById('registerModal').classList.remove('open');
+            document.body.style.overflow = '';
+            // フォームリセット
+            document.getElementById('formContent').style.display = 'block';
+            document.getElementById('formSuccess').style.display = 'none';
+            document.getElementById('reg_name').value = '';
+            document.getElementById('reg_os').value = '';
+            document.getElementById('reg_price').value = '';
+            document.getElementById('reg_turnaround').value = '';
+            document.getElementById('reg_description').value = '';
+            document.getElementById('reg_avatar').value = '';
+            document.querySelectorAll('.tool-checkbox').forEach(c => c.checked = false);
+            document.getElementById('formError').style.display = 'none';
+        }
+        function handleOverlayClick(e) {
+            if (e.target === document.getElementById('registerModal')) closeModal();
+        }
+
+        // ===== 登録処理 =====
+        async function submitRegister() {
+            const errorEl = document.getElementById('formError');
+            errorEl.style.display = 'none';
+
+            // バリデーション
+            const name  = document.getElementById('reg_name').value.trim();
+            const os    = document.getElementById('reg_os').value;
+            const price = document.getElementById('reg_price').value.trim();
+            const tools = Array.from(document.querySelectorAll('.tool-checkbox:checked')).map(c => c.value);
+
+            if (!name)         { showError('お名前を入力してください'); return; }
+            if (!os)           { showError('使用OSを選択してください'); return; }
+            if (tools.length === 0) { showError('使用ソフトを1つ以上選択してください'); return; }
+            if (!price)        { showError('料金を入力してください'); return; }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = '送信中...';
+
+            try {
+                if (!window.supabase) throw new Error('Supabaseライブラリ未読み込み');
+                const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+                const { error } = await client.from('editors').insert([{
+                    name:        name,
+                    os:          os,
+                    tools:       tools,
+                    price:       price,
+                    turnaround:  document.getElementById('reg_turnaround').value.trim() || null,
+                    description: document.getElementById('reg_description').value.trim() || null,
+                    avatar:      document.getElementById('reg_avatar').value.trim() || null,
+                }]);
+
+                if (error) throw error;
+
+                document.getElementById('formContent').style.display = 'none';
+                document.getElementById('formSuccess').style.display = 'block';
+
+            } catch (err) {
+                console.error(err);
+                showError('登録に失敗しました：' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '登録する';
+            }
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('formError');
+            el.textContent = '⚠️ ' + msg;
+            el.style.display = 'block';
+        }
             document.getElementById('editors').scrollIntoView({ behavior: 'smooth' });
         }
 
