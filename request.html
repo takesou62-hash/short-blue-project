@@ -5,38 +5,335 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shorts Match - 制作依頼・相談</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Noto Sans JP', sans-serif; }
-        .gradient-bg { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 60%, #e0e7ff 100%); }
+        .gradient-bg  { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 60%, #e0e7ff 100%); min-height: 100vh; }
         .gradient-btn { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
         .card { background: white; border-radius: 24px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
         .fade-in { animation: fadeIn 0.5s ease both; }
-        @keyframes fadeIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-        input:focus, textarea:focus { border-color: #06b6d4; box-shadow: 0 0 0 3px rgba(6,182,212,0.1); outline: none; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+        .slide-up { animation: slideUp 0.4s ease both; }
+        @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        .form-label { display:block; font-size:12px; font-weight:900; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; }
+        .form-input { width:100%; padding:12px 16px; border:2px solid #e2e8f0; border-radius:14px; font-size:14px; font-family:inherit; outline:none; background:#f8fafc; transition:border-color 0.2s,box-shadow 0.2s; box-sizing:border-box; }
+        .form-input:focus { border-color:#06b6d4; background:white; box-shadow:0 0 0 3px rgba(6,182,212,0.12); }
+        .form-select { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2394a3b8' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:40px; }
+        .chip-group { display:flex; flex-wrap:wrap; gap:8px; }
+        .chip input[type=radio],.chip input[type=checkbox] { display:none; }
+        .chip input:checked + label { background:linear-gradient(135deg,#06b6d4,#3b82f6); color:white; border-color:transparent; box-shadow:0 2px 8px rgba(6,182,212,0.35); }
+        .chip label { display:inline-block; padding:8px 16px; border-radius:20px; border:2px solid #e2e8f0; background:#f8fafc; color:#475569; font-size:13px; font-weight:700; cursor:pointer; transition:all 0.2s; user-select:none; }
+        .chip label:hover { border-color:#06b6d4; color:#06b6d4; }
+        .progress-bar { height:5px; background:#e2e8f0; border-radius:99px; overflow:hidden; }
+        .progress-fill { height:100%; background:linear-gradient(to right,#06b6d4,#3b82f6); border-radius:99px; transition:width 0.35s ease; }
+        .msg-preview { background:linear-gradient(135deg,rgba(6,182,212,0.06),rgba(59,130,246,0.06)); border:2px solid rgba(6,182,212,0.2); border-radius:18px; padding:18px 22px; }
+        .success-overlay { position:fixed; inset:0; background:rgba(255,255,255,0.92); backdrop-filter:blur(8px); z-index:200; display:none; flex-direction:column; align-items:center; justify-content:center; }
+        .success-overlay.show { display:flex; }
+        @keyframes bounce { from { transform:translateY(0); } to { transform:translateY(-12px); } }
+        .bounce { animation:bounce 0.65s ease infinite alternate; font-size:3.5rem; }
+        .login-banner { background:linear-gradient(135deg,#fef3c7,#fde68a); border:2px solid #fbbf24; border-radius:16px; padding:16px 20px; display:none; }
+        .login-banner.show { display:flex; align-items:center; gap:12px; }
     </style>
 </head>
-<body class="gradient-bg min-h-screen">
+<body class="gradient-bg">
+
+<div class="success-overlay" id="successOverlay">
+    <div class="text-center slide-up px-6">
+        <div class="bounce mb-5">🎉</div>
+        <h2 class="text-3xl font-black text-slate-800 mb-2">依頼を送信しました！</h2>
+        <p class="text-slate-500 mb-1">メッセージが編集者に届きました。</p>
+        <p class="text-slate-400 text-sm mb-8">チャット画面から続きのやり取りができます。</p>
+        <div class="flex gap-3 justify-center flex-wrap">
+            <a id="goToChatBtn" href="auth.html" class="gradient-btn text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-cyan-200 hover:opacity-90 transition-all">💬 チャット画面へ</a>
+            <a href="index.html" class="bg-white text-slate-500 px-8 py-4 rounded-2xl font-black border-2 border-slate-200 hover:border-slate-300 transition-all">トップに戻る</a>
+        </div>
+    </div>
+</div>
 
 <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
-    <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-        <a href="index.html" class="font-black text-xl text-cyan-600">Shorts Match</a>
-        <a href="index.html" class="text-sm font-bold text-slate-500">キャンセル</a>
+    <div class="max-w-2xl mx-auto px-5 py-4 flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-2 group">
+            <div class="w-8 h-8 gradient-btn rounded-lg flex items-center justify-center text-white text-sm font-black shadow group-hover:scale-110 transition-transform">▶</div>
+            <span class="font-black text-lg text-cyan-600">Shorts Match</span>
+        </a>
+        <a href="javascript:history.back()" class="text-sm font-bold text-slate-500 hover:text-cyan-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-cyan-50">キャンセル</a>
     </div>
 </header>
 
-<main class="max-w-2xl mx-auto px-4 py-12">
-    <div class="card p-8 fade-in">
-        <div class="flex items-center gap-4 mb-8">
-            <img id="editorAvatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=editor" class="w-16 h-16 rounded-2xl border-2 border-cyan-100 object-cover">
-            <div>
-                <h1 class="text-2xl font-black text-slate-800">制作を相談する</h1>
-                <p class="text-sm text-slate-500" id="editorNameDisplay">読み込み中...</p>
+<main class="max-w-2xl mx-auto px-4 py-8 fade-in">
+
+    <div class="card p-5 mb-5 flex items-center gap-4">
+        <img id="editorAvatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=default" alt="editor" class="w-14 h-14 rounded-2xl object-cover border-4 border-white shadow flex-shrink-0">
+        <div class="flex-1 min-w-0">
+            <p class="text-xs font-bold text-cyan-500 mb-0.5">依頼先の編集者</p>
+            <h2 class="text-xl font-black text-slate-800 truncate" id="editorName">読み込み中...</h2>
+        </div>
+        <div class="w-10 h-10 gradient-btn rounded-xl flex items-center justify-center text-white text-lg shadow flex-shrink-0">✉️</div>
+    </div>
+
+    <div class="login-banner mb-5" id="loginBanner">
+        <span class="text-xl flex-shrink-0">⚠️</span>
+        <div class="flex-1">
+            <p class="text-sm font-black text-amber-800">送信にはログインが必要です</p>
+            <p class="text-xs text-amber-700 mt-0.5">フォームへの入力はできますが、送信前にログインしてください。</p>
+        </div>
+        <a href="auth.html" class="flex-shrink-0 text-xs font-black text-white bg-amber-500 px-4 py-2 rounded-xl hover:bg-amber-600 transition-colors">ログイン</a>
+    </div>
+
+    <div class="mb-5">
+        <div class="flex justify-between mb-1.5">
+            <span class="text-xs font-bold text-slate-400">入力進捗</span>
+            <span class="text-xs font-black text-cyan-500" id="progressText">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="card p-7 space-y-7">
+
+        <div>
+            <label class="form-label">① 依頼ジャンル <span class="text-red-400">*</span></label>
+            <div class="chip-group">
+                <span class="chip"><input type="radio" name="genre" id="g1" value="YouTubeショート"><label for="g1">▶ YouTubeショート</label></span>
+                <span class="chip"><input type="radio" name="genre" id="g2" value="TikTok"><label for="g2">🎵 TikTok</label></span>
+                <span class="chip"><input type="radio" name="genre" id="g3" value="Instagram Reels"><label for="g3">📸 Instagram Reels</label></span>
+                <span class="chip"><input type="radio" name="genre" id="g4" value="広告動画"><label for="g4">📢 広告動画</label></span>
+                <span class="chip"><input type="radio" name="genre" id="g5" value="切り抜き動画"><label for="g5">✂️ 切り抜き動画</label></span>
+                <span class="chip"><input type="radio" name="genre" id="g6" value="その他"><label for="g6">🎬 その他</label></span>
             </div>
         </div>
 
-        <form id="requestForm" class="space-y-6">
-            <div>
-                <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">依頼ジャンル</label>
-                <select id="genre" class="w-full px-4 py-3 border-2 border
+        <div>
+            <label class="form-label" for="videoDuration">② 動画の完成予定時間 <span class="text-red-400">*</span></label>
+            <select id="videoDuration" class="form-input form-select">
+                <option value="">選択してください</option>
+                <option>〜30秒</option>
+                <option>30秒〜1分</option>
+                <option>1分〜3分</option>
+                <option>3分〜5分</option>
+                <option>5分以上</option>
+                <option>未定・相談したい</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="form-label">③ 素材データの有無 <span class="text-red-400">*</span></label>
+            <div class="chip-group">
+                <span class="chip"><input type="radio" name="hasAssets" id="a1" value="あり（すべて揃っている）"><label for="a1">✅ あり（すべて揃っている）</label></span>
+                <span class="chip"><input type="radio" name="hasAssets" id="a2" value="一部あり"><label for="a2">📁 一部あり</label></span>
+                <span class="chip"><input type="radio" name="hasAssets" id="a3" value="なし（撮影から依頼）"><label for="a3">🎥 なし（撮影から依頼）</label></span>
+                <span class="chip"><input type="radio" name="hasAssets" id="a4" value="未定"><label for="a4">🤔 未定</label></span>
+            </div>
+        </div>
+
+        <div>
+            <label class="form-label" for="deadline">④ 希望納期 <span class="text-red-400">*</span></label>
+            <select id="deadline" class="form-input form-select">
+                <option value="">選択してください</option>
+                <option>3日以内（急ぎ）</option>
+                <option>1週間以内</option>
+                <option>2週間以内</option>
+                <option>1ヶ月以内</option>
+                <option>相談したい</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="form-label">⑤ 予算感 <span class="text-red-400">*</span></label>
+            <div class="chip-group">
+                <span class="chip"><input type="radio" name="budget" id="b1" value="〜¥5,000"><label for="b1">〜¥5,000</label></span>
+                <span class="chip"><input type="radio" name="budget" id="b2" value="¥5,000〜¥10,000"><label for="b2">¥5,000〜¥10,000</label></span>
+                <span class="chip"><input type="radio" name="budget" id="b3" value="¥10,000〜¥30,000"><label for="b3">¥10,000〜¥30,000</label></span>
+                <span class="chip"><input type="radio" name="budget" id="b4" value="¥30,000以上"><label for="b4">¥30,000以上</label></span>
+                <span class="chip"><input type="radio" name="budget" id="b5" value="要相談"><label for="b5">要相談</label></span>
+            </div>
+        </div>
+
+        <div>
+            <label class="form-label" for="referenceUrl">⑥ 参考URL（任意）</label>
+            <input type="url" id="referenceUrl" class="form-input" placeholder="https://youtube.com/...">
+            <p class="text-xs text-slate-400 mt-1.5 px-1">イメージに近い動画や参考にしてほしいURLがあれば</p>
+        </div>
+
+        <div>
+            <label class="form-label" for="details">⑦ 詳細な依頼内容 <span class="text-red-400">*</span></label>
+            <textarea id="details" rows="5" class="form-input" style="resize:vertical;min-height:120px;"
+                placeholder="・どんな動画にしたいか&#10;・ターゲット視聴者&#10;・希望するテイストや雰囲気&#10;など、できるだけ詳しく教えてください"></textarea>
+        </div>
+
+        <div class="msg-preview" id="msgPreview" style="display:none;">
+            <p class="text-xs font-black text-cyan-600 mb-3">📨 送信されるメッセージ（プレビュー）</p>
+            <p class="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap" id="msgPreviewText"></p>
+        </div>
+
+        <div id="formError" style="display:none;" class="text-sm font-bold px-4 py-3 rounded-xl bg-red-50 text-red-500 border border-red-200"></div>
+
+        <button onclick="submitRequest()" id="submitBtn"
+            class="w-full gradient-btn text-white py-4 rounded-2xl font-black text-base shadow-lg shadow-cyan-200 hover:opacity-90 transition-all">
+            ✉️ 依頼を送信する
+        </button>
+        <p class="text-center text-xs text-slate-400">送信後、チャット画面で詳細のやり取りができます</p>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+<script>
+    // URLパラメータ（Supabase不要で即時反映）
+    const params       = new URLSearchParams(location.search);
+    const editorId     = params.get('editor_id')     || '';
+    const editorName   = params.get('editor_name')   || '編集者';
+    const editorAvatar = params.get('editor_avatar') || '';
+
+    document.getElementById('editorName').textContent = editorName || '編集者';
+    document.getElementById('editorAvatar').src = editorAvatar
+        || ('https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(editorName || 'default'));
+
+    // Supabase & セッション
+    let sb = null;
+    let currentSession = null;
+
+    async function waitForSupabase() {
+        for (let i = 0; i < 50; i++) {
+            if (window.supabase) break;
+            await new Promise(r => setTimeout(r, 100));
+        }
+        if (!window.supabase) return;
+        sb = window.supabase.createClient(
+            'https://dwmgwdhunvanrsautvtj.supabase.co',
+            'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0'
+        );
+        const { data } = await sb.auth.getSession();
+        currentSession = data.session;
+        if (!currentSession) {
+            document.getElementById('loginBanner').classList.add('show');
+        }
+    }
+
+    // フォームのリスナー
+    document.addEventListener('DOMContentLoaded', function() {
+        waitForSupabase();
+        ['g1','g2','g3','g4','g5','g6'].forEach(function(id) {
+            document.getElementById(id).addEventListener('change', refresh);
+        });
+        ['a1','a2','a3','a4'].forEach(function(id) {
+            document.getElementById(id).addEventListener('change', refresh);
+        });
+        ['b1','b2','b3','b4','b5'].forEach(function(id) {
+            document.getElementById(id).addEventListener('change', refresh);
+        });
+        ['videoDuration','deadline','referenceUrl','details'].forEach(function(id) {
+            document.getElementById(id).addEventListener('input', refresh);
+            document.getElementById(id).addEventListener('change', refresh);
+        });
+    });
+
+    function refresh() { updateProgress(); updatePreview(); }
+
+    function updateProgress() {
+        var checks = [
+            !!document.querySelector('input[name="genre"]:checked'),
+            !!document.getElementById('videoDuration').value,
+            !!document.querySelector('input[name="hasAssets"]:checked'),
+            !!document.getElementById('deadline').value,
+            !!document.querySelector('input[name="budget"]:checked'),
+            document.getElementById('details').value.trim().length >= 10
+        ];
+        var pct = Math.round(checks.filter(Boolean).length / checks.length * 100);
+        document.getElementById('progressFill').style.width = pct + '%';
+        document.getElementById('progressText').textContent = pct + '%';
+    }
+
+    function buildMessage() {
+        var genre    = (document.querySelector('input[name="genre"]:checked') || {}).value    || '';
+        var duration = document.getElementById('videoDuration').value;
+        var assets   = (document.querySelector('input[name="hasAssets"]:checked') || {}).value || '';
+        var deadline = document.getElementById('deadline').value;
+        var budget   = (document.querySelector('input[name="budget"]:checked') || {}).value   || '';
+        var refUrl   = document.getElementById('referenceUrl').value.trim();
+        var details  = document.getElementById('details').value.trim();
+        var lines = [
+            '【依頼申し込み】' + editorName + ' さんへ',
+            '',
+            '📌 依頼ジャンル: ' + (genre    || '未選択'),
+            '⏱ 完成予定時間: ' + (duration  || '未選択'),
+            '📁 素材データ:   ' + (assets   || '未選択'),
+            '📅 希望納期:     ' + (deadline || '未選択'),
+            '💰 予算感:       ' + (budget   || '未選択')
+        ];
+        if (refUrl) lines.push('🔗 参考URL: ' + refUrl);
+        lines.push('', '📝 詳細:\n' + (details || '（未入力）'));
+        return lines.join('\n');
+    }
+
+    function updatePreview() {
+        var hasAny = document.querySelector('input[name="genre"]:checked')
+                  || document.getElementById('details').value.trim();
+        var preview = document.getElementById('msgPreview');
+        if (hasAny) {
+            document.getElementById('msgPreviewText').textContent = buildMessage();
+            preview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    async function submitRequest() {
+        var errEl = document.getElementById('formError');
+        errEl.style.display = 'none';
+
+        var genre    = (document.querySelector('input[name="genre"]:checked') || {}).value;
+        var duration = document.getElementById('videoDuration').value;
+        var assets   = (document.querySelector('input[name="hasAssets"]:checked') || {}).value;
+        var deadline = document.getElementById('deadline').value;
+        var budget   = (document.querySelector('input[name="budget"]:checked') || {}).value;
+        var details  = document.getElementById('details').value.trim();
+
+        if (!genre)               return showError('依頼ジャンルを選択してください');
+        if (!duration)            return showError('動画の完成予定時間を選択してください');
+        if (!assets)              return showError('素材データの有無を選択してください');
+        if (!deadline)            return showError('希望納期を選択してください');
+        if (!budget)              return showError('予算感を選択してください');
+        if (details.length < 10) return showError('詳細な依頼内容をもう少し詳しく入力してください（10文字以上）');
+
+        // Supabase初期化待ち
+        if (!sb) await waitForSupabase();
+        if (!sb) return showError('通信の初期化に失敗しました。ページをリロードしてください。');
+
+        // セッション再確認
+        if (!currentSession) {
+            var res = await sb.auth.getSession();
+            currentSession = res.data.session;
+        }
+        if (!currentSession) return showError('送信にはログインが必要です。画面上部のバナーからログインしてください。');
+        if (!editorId)        return showError('編集者IDが取得できません。トップページからやり直してください。');
+
+        var btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.textContent = '⏳ 送信中...';
+
+        try {
+            var result = await sb.from('messages').insert({
+                sender_id:   currentSession.user.id,
+                receiver_id: editorId,
+                content:     buildMessage()
+            });
+            if (result.error) throw result.error;
+
+            document.getElementById('goToChatBtn').href = 'auth.html?open_chat=' + editorId;
+            document.getElementById('successOverlay').classList.add('show');
+        } catch(err) {
+            console.error(err);
+            showError('送信に失敗しました: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = '✉️ 依頼を送信する';
+        }
+    }
+
+    function showError(msg) {
+        var el = document.getElementById('formError');
+        el.textContent = '⚠️ ' + msg;
+        el.style.display = 'block';
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+</script>
+</body>
+</html>
