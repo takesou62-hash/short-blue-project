@@ -9,10 +9,6 @@
     <style>
         .gradient-bg { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); }
         .gradient-btn { background: linear-gradient(to right, #06b6d4, #3b82f6); }
-        .tool-checkbox:checked + .tool-label {
-            background: linear-gradient(to right, #06b6d4, #3b82f6);
-            color: white; border-color: #06b6d4;
-        }
         .fade-in { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -21,22 +17,17 @@
 
     <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
         <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-            <a href="index.html" class="flex items-center gap-2 font-bold text-xl text-cyan-600 hover:scale-105 transition-transform">
-                ▶ Shorts Match
-            </a>
-            <div id="headerNav" class="flex items-center gap-3">
-                <a href="index.html" class="text-sm font-bold text-slate-500 hover:text-cyan-600 transition-colors">トップページへ</a>
-            </div>
+            <a href="index.html" class="flex items-center gap-2 font-bold text-xl text-cyan-600">▶ Shorts Match</a>
+            <a href="index.html" class="text-sm font-bold text-slate-500 hover:text-cyan-600">トップページへ</a>
         </div>
     </header>
 
     <main class="max-w-md mx-auto px-6 py-12">
-
         <div id="authSection" class="fade-in">
             <div class="text-center mb-8">
-                <div class="w-16 h-16 gradient-btn rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-4">✏️</div>
+                <div class="w-16 h-16 gradient-btn rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-4 shadow-lg">✏️</div>
                 <h1 class="text-3xl font-black text-slate-800 mb-2">編集者ポータル</h1>
-                <p class="text-slate-500">ログインしてプロフィールを管理しましょう</p>
+                <p class="text-slate-500">ログインまたは新規登録をしてください</p>
             </div>
 
             <div class="bg-white rounded-3xl shadow-xl p-8">
@@ -45,58 +36,44 @@
                     <button id="tabRegister" onclick="switchTab('register')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all text-slate-500">新規登録</button>
                 </div>
 
-                <div id="loginForm">
-                    <div class="mb-5">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス</label>
-                        <input id="loginEmail" type="email" placeholder="example@email.com" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
-                    </div>
-                    <div class="mb-6">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">パスワード</label>
-                        <input id="loginPassword" type="password" placeholder="••••••••" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
-                    </div>
-                    <div id="loginError" class="text-red-500 text-sm mb-4 hidden font-bold"></div>
-                    <button onclick="handleLogin()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold text-lg hover:opacity-90 hover:scale-[1.02] transition-all shadow-lg shadow-cyan-200">ログイン</button>
+                <div id="loginForm" class="space-y-5">
+                    <input id="loginEmail" type="email" placeholder="メールアドレス" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    <input id="loginPassword" type="password" placeholder="パスワード" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    <div id="loginError" class="text-red-500 text-sm hidden font-bold"></div>
+                    <button onclick="handleLogin()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:scale-[1.02] transition-all">ログイン</button>
                 </div>
 
-                <div id="registerForm" class="hidden">
-                    <div class="mb-5">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">お名前（表示名） <span class="text-red-400">*</span></label>
-                        <input id="regName" type="text" placeholder="例：山田 太郎" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
-                    </div>
-                    <div class="mb-5">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">メールアドレス <span class="text-red-400">*</span></label>
-                        <input id="regEmail" type="email" placeholder="example@email.com" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
-                    </div>
-                    <div class="mb-6">
-                        <label class="block text-sm font-bold text-slate-700 mb-2">パスワード <span class="text-red-400">*</span>（6文字以上）</label>
-                        <input id="regPassword" type="password" placeholder="••••••••" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:border-cyan-400 focus:outline-none bg-slate-50 focus:bg-white transition-all">
-                    </div>
-                    <div id="registerError" class="text-red-500 text-sm mb-4 hidden font-bold"></div>
-                    <button onclick="handleRegister()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold text-lg hover:opacity-90 hover:scale-[1.02] transition-all shadow-lg shadow-cyan-200">アカウントを作成</button>
+                <div id="registerForm" class="hidden space-y-5">
+                    <input id="regName" type="text" placeholder="お名前（表示名）" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    <input id="regEmail" type="email" placeholder="メールアドレス" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    <input id="regPassword" type="password" placeholder="パスワード（6文字以上）" class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    <div id="registerError" class="text-red-500 text-sm hidden font-bold"></div>
+                    <button onclick="handleRegister()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:scale-[1.02] transition-all">アカウントを作成</button>
                 </div>
             </div>
         </div>
 
-        <div id="mypageSection" class="hidden fade-in">
-            <div class="text-center mb-8">
-                <div class="w-20 h-20 rounded-2xl mx-auto mb-4 overflow-hidden border-4 border-white shadow-lg bg-slate-100 flex items-center justify-center text-2xl" id="mypageAvatar">👤</div>
+        <div id="mypageSection" class="hidden fade-in space-y-6">
+            <div class="text-center">
+                <div class="w-20 h-20 rounded-2xl mx-auto mb-4 bg-slate-100 flex items-center justify-center text-3xl shadow-lg border-4 border-white">👤</div>
                 <h1 class="text-2xl font-black text-slate-800" id="mypageName">読み込み中...</h1>
-                <p class="text-cyan-500 font-bold text-sm mt-1" id="mypageEmail"></p>
+                <p class="text-cyan-600 font-bold text-sm" id="mypageEmail"></p>
             </div>
 
-            <div class="bg-white rounded-3xl shadow-xl p-8 mb-6">
-                <h2 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                    <span class="w-8 h-8 gradient-btn rounded-lg flex items-center justify-center text-white text-sm">✏️</span>
-                    プロフィール編集
-                </h2>
-                <div class="space-y-5">
-                    <input type="text" id="mpName" placeholder="表示名" class="w-full p-4 bg-slate-50 rounded-2xl border outline-none focus:border-cyan-400">
-                    <input type="text" id="mpPrice" placeholder="単価目安 (例: ¥3,000〜)" class="w-full p-4 bg-slate-50 rounded-2xl border outline-none focus:border-cyan-400">
-                    <button onclick="handleUpdate()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold text-lg hover:opacity-90 hover:scale-[1.02] transition-all">保存する</button>
-                    <div id="mypageStatus" class="text-emerald-500 text-center font-bold hidden"></div>
+            <div class="bg-white rounded-3xl shadow-xl p-8 space-y-6">
+                <h2 class="text-lg font-bold text-slate-800 border-b pb-4">プロフィール編集</h2>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-2 px-1">表示名</label>
+                    <input type="text" id="mpName" class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-cyan-400 outline-none transition-all">
                 </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-2 px-1">単価目安</label>
+                    <input type="text" id="mpPrice" placeholder="例: ¥3,000〜" class="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent focus:border-cyan-400 outline-none transition-all">
+                </div>
+                <div id="mypageStatus" class="text-center font-bold text-sm hidden"></div>
+                <button onclick="handleUpdate()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:scale-[1.02] transition-all">保存する</button>
             </div>
-            <button onclick="handleLogout()" class="w-full bg-white text-slate-500 py-3 rounded-2xl font-bold border-2 border-slate-200 hover:text-red-500 transition-all">ログアウト</button>
+            <button onclick="handleLogout()" class="w-full bg-white text-slate-400 py-4 rounded-2xl font-bold border-2 border-slate-100 hover:text-red-500 transition-all">ログアウト</button>
         </div>
     </main>
 
@@ -105,8 +82,8 @@
         const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        window.addEventListener('load', async () => {
-            const { data: { session } } = await sb.auth.getSession();
+        // 状態監視
+        sb.auth.onAuthStateChanged((event, session) => {
             if (session) { loadMypage(session.user); } else { showAuth(); }
         });
 
@@ -122,8 +99,10 @@
             const email = document.getElementById('loginEmail').value.trim();
             const password = document.getElementById('loginPassword').value;
             const errEl = document.getElementById('loginError');
+            errEl.classList.add('hidden');
+
             const { data, error } = await sb.auth.signInWithPassword({ email, password });
-            if (error) { errEl.textContent = '❌ ' + error.message; errEl.classList.remove('hidden'); } else { loadMypage(data.user); }
+            if (error) { errEl.textContent = '❌ ' + error.message; errEl.classList.remove('hidden'); }
         }
 
         async function handleRegister() {
@@ -131,17 +110,15 @@
             const password = document.getElementById('regPassword').value;
             const name = document.getElementById('regName').value.trim();
             const errEl = document.getElementById('registerError');
+            errEl.classList.add('hidden');
             
             if (!name) { errEl.textContent = '⚠️ お名前を入力してください'; errEl.classList.remove('hidden'); return; }
 
-            const { data, error: authError } = await sb.auth.signUp({ email, password });
-            if (authError) { errEl.textContent = '❌ ' + authError.message; errEl.classList.remove('hidden'); return; }
-
-            if (data.user) {
-                // 名前をテーブルに保存
+            const { data, error } = await sb.auth.signUp({ email, password });
+            if (error) { errEl.textContent = '❌ ' + error.message; errEl.classList.remove('hidden'); } 
+            else if (data.user) {
                 await sb.from('editors').upsert({ id: data.user.id, name: name });
-                alert('登録完了しました！');
-                loadMypage(data.user);
+                alert('登録が完了しました！');
             }
         }
 
@@ -155,49 +132,14 @@
                 document.getElementById('mpPrice').value = data.price || '';
             }
         }
-// プロフィール更新処理（上書き・作成両対応版）
+
         async function handleUpdate() {
             const statusEl = document.getElementById('mypageStatus');
-            statusEl.classList.remove('hidden', 'text-emerald-500', 'text-red-500');
+            statusEl.className = 'text-center font-bold text-sm text-cyan-600';
             statusEl.textContent = '保存中...';
+            statusEl.classList.remove('hidden');
 
             const { data: { user } } = await sb.auth.getUser();
-            if (!user) {
-                statusEl.textContent = '❌ セッション切れ。再ログインしてください';
-                statusEl.classList.add('text-red-500');
-                statusEl.classList.remove('hidden');
-                return;
-            }
-
             const updates = {
                 id: user.id,
-                name: document.getElementById('mpName').value.trim(),
-                price: document.getElementById('mpPrice').value.trim()
-            };
-
-            // .update ではなく .upsert (アップサート) を使うのがコツです
-            const { error } = await sb
-                .from('editors')
-                .upsert(updates, { onConflict: 'id' });
-
-            if (error) {
-                console.error('Save error:', error);
-                statusEl.textContent = '❌ 保存失敗: ' + error.message;
-                statusEl.classList.add('text-red-500');
-                statusEl.classList.remove('hidden');
-            } else {
-                statusEl.textContent = '✅ プロフィールを保存しました！';
-                statusEl.classList.add('text-emerald-500');
-                statusEl.classList.remove('hidden');
-                document.getElementById('mypageName').textContent = updates.name;
-                setTimeout(() => statusEl.classList.add('hidden'), 3000);
-            }
-        }        
-        }
-
-        async function handleLogout() { await sb.auth.signOut(); showAuth(); }
-        function showAuth() { document.getElementById('authSection').classList.remove('hidden'); document.getElementById('mypageSection').classList.add('hidden'); }
-        function showMypage() { document.getElementById('authSection').classList.add('hidden'); document.getElementById('mypageSection').classList.remove('hidden'); }
-    </script>
-</body>
-</html>
+                name: document.getElementById('mp
