@@ -220,15 +220,34 @@
     <div class="container">
         <header>
             <div class="logo">▶ Shorts Match</div>
+            <a href="auth.html" style="
+                background: linear-gradient(to right, #06b6d4, #3b82f6);
+                color: white;
+                padding: 10px 22px;
+                border-radius: 20px;
+                border: none;
+                font-weight: 700;
+                font-size: 0.9em;
+                text-decoration: none;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                transition: all 0.3s;
+                box-shadow: 0 4px 12px rgba(6,182,212,0.3);
+            " onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 18px rgba(6,182,212,0.45)'"
+               onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 12px rgba(6,182,212,0.3)'">
+                マイページ
+            </a>
         </header>
 
         <section class="hero">
             <h1>ショート動画で、<br><span class="gradient-text">あなたの活動を加速させる</span></h1>
             <p>プロの動画編集者とマッチング。<br>使用ソフトから選べて、最短24時間で高品質なショート動画が完成。</p>
-            <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 30px;">
-                <a href="#editors" class="btn btn-large" style="text-decoration: none; display: flex; align-items: center; justify-content: center;">編集者を探す</a>
-                <a href="auth.html" class="btn btn-large btn-secondary" style="text-decoration: none; display: flex; align-items: center; justify-content: center;">編集者として登録</a>
-            </div>        </section>
+            <div style="display:flex; gap:20px; justify-content:center; flex-wrap:wrap; margin-top:30px;">
+                <button class="btn btn-large" onclick="scrollToEditors()">編集者を探す ▶</button>
+                <button class="btn btn-large btn-secondary" onclick="openModal()">編集者として登録</button>
+            </div>
+        </section>
 
         <section class="features">
             <div class="feature-card"><div class="feature-icon">⚡</div><h3>最短24時間納品</h3><p>急ぎの案件にも対応</p></div>
