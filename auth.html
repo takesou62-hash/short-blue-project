@@ -155,20 +155,44 @@
                 document.getElementById('mpPrice').value = data.price || '';
             }
         }
-
+// プロフィール更新処理（上書き・作成両対応版）
         async function handleUpdate() {
+            const statusEl = document.getElementById('mypageStatus');
+            statusEl.classList.remove('hidden', 'text-emerald-500', 'text-red-500');
+            statusEl.textContent = '保存中...';
+
             const { data: { user } } = await sb.auth.getUser();
+            if (!user) {
+                statusEl.textContent = '❌ セッション切れ。再ログインしてください';
+                statusEl.classList.add('text-red-500');
+                statusEl.classList.remove('hidden');
+                return;
+            }
+
             const updates = {
+                id: user.id,
                 name: document.getElementById('mpName').value.trim(),
                 price: document.getElementById('mpPrice').value.trim()
             };
-            const { error } = await sb.from('editors').update(updates).filter('id::text', 'eq', user.id);
-            if (!error) {
-                document.getElementById('mypageStatus').textContent = '✅ プロフィールを保存しました！';
-                document.getElementById('mypageStatus').classList.remove('hidden');
+
+            // .update ではなく .upsert (アップサート) を使うのがコツです
+            const { error } = await sb
+                .from('editors')
+                .upsert(updates, { onConflict: 'id' });
+
+            if (error) {
+                console.error('Save error:', error);
+                statusEl.textContent = '❌ 保存失敗: ' + error.message;
+                statusEl.classList.add('text-red-500');
+                statusEl.classList.remove('hidden');
+            } else {
+                statusEl.textContent = '✅ プロフィールを保存しました！';
+                statusEl.classList.add('text-emerald-500');
+                statusEl.classList.remove('hidden');
                 document.getElementById('mypageName').textContent = updates.name;
-                setTimeout(() => document.getElementById('mypageStatus').classList.add('hidden'), 3000);
+                setTimeout(() => statusEl.classList.add('hidden'), 3000);
             }
+        }        
         }
 
         async function handleLogout() { await sb.auth.signOut(); showAuth(); }
