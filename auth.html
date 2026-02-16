@@ -189,7 +189,7 @@
                         <input type="radio" name="regRole" value="client" class="hidden" checked>
                         <div class="border-2 border-cyan-400 bg-cyan-50 rounded-2xl p-4 text-center transition-all">
                             <div class="text-3xl mb-2">🎬</div>
-                            <div class="font-black text-sm text-slate-800">クライアント</div>
+                            <div class="font-black text-sm text-slate-800">クリエイター</div>
                             <div class="text-xs text-slate-500 mt-1">動画制作を依頼したい</div>
                         </div>
                     </label>
@@ -207,6 +207,8 @@
                 <input id="regEmail" type="email" placeholder="メールアドレス"
                     class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
                 <input id="regPassword" type="password" placeholder="パスワード（6文字以上）"
+                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                <input id="regPasswordConfirm" type="password" placeholder="パスワード（確認）"
                     class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
                 <div id="registerMsg" class="hidden text-sm font-bold px-4 py-3 rounded-xl"></div>
                 <button onclick="handleRegister()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:scale-[1.02] hover:opacity-90 transition-all">アカウントを作成</button>
@@ -555,7 +557,7 @@
                     </div>
                     <h2 class="text-xl font-black text-slate-800 mt-3" id="clientName">読み込み中...</h2>
                     <p class="text-cyan-500 font-bold text-sm mt-1" id="clientEmail"></p>
-                    <span class="inline-block mt-2 px-3 py-1 bg-cyan-100 text-cyan-700 text-xs font-black rounded-full">🎬 クライアント</span>
+                    <span class="inline-block mt-2 px-3 py-1 bg-cyan-100 text-cyan-700 text-xs font-black rounded-full">🎬 クリエイター</span>
                     <button onclick="handleLogout()"
                         class="mt-4 w-full text-slate-400 text-sm py-2.5 rounded-xl border-2 border-slate-100 hover:text-red-500 hover:border-red-100 transition-all font-bold">
                         ログアウト
@@ -624,7 +626,7 @@
                                 <div class="font-black text-slate-800 text-sm" id="clientChatTitle">編集者へのメッセージ</div>
                                 <div class="text-xs text-slate-400">相談中の編集者とチャット</div>
                             </div>
-                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-cyan-100 text-cyan-700 flex-shrink-0">🎬 クライアント</span>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-cyan-100 text-cyan-700 flex-shrink-0">🎬 クリエイター</span>
                         </div>
                         <div class="flex flex-1 overflow-hidden" style="min-height:440px;">
                             <div class="w-48 flex-shrink-0 border-r border-slate-100 flex flex-col bg-slate-50">
@@ -745,37 +747,72 @@
         if (!email || !password) { showMsg('loginMsg','⚠️ メールアドレスとパスワードを入力してください','error'); return; }
         showMsg('loginMsg','⏳ ログイン中...','info');
         const { data, error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) { showMsg('loginMsg','❌ '+error.message,'error'); return; }
+        if (error) { showMsg('loginMsg', translateAuthError(error.message), 'error'); return; }
         showMsg('loginMsg','✅ ログインしました！マイページへ移動します','success');
         setTimeout(() => loadMypage(data.user), 1000);
     }
 
     // ===== 新規登録 =====
     async function handleRegister() {
-        const name     = document.getElementById('regName').value.trim();
-        const email    = document.getElementById('regEmail').value.trim();
-        const password = document.getElementById('regPassword').value;
-        const role     = document.querySelector('input[name="regRole"]:checked')?.value || 'client';
+        const name            = document.getElementById('regName').value.trim();
+        const email           = document.getElementById('regEmail').value.trim();
+        const password        = document.getElementById('regPassword').value;
+        const passwordConfirm = document.getElementById('regPasswordConfirm').value;
+        const role            = document.querySelector('input[name="regRole"]:checked')?.value || 'client';
         hideMsg('registerMsg');
+
         if (!name)               { showMsg('registerMsg','⚠️ お名前を入力してください','error'); return; }
         if (!email)              { showMsg('registerMsg','⚠️ メールアドレスを入力してください','error'); return; }
         if (password.length < 6) { showMsg('registerMsg','⚠️ パスワードは6文字以上にしてください','error'); return; }
+        if (password !== passwordConfirm) { showMsg('registerMsg','⚠️ パスワードが一致していません','error'); return; }
+
         showMsg('registerMsg','⏳ アカウントを作成中...','info');
 
         const { data, error } = await sb.auth.signUp({ email, password });
-        if (error) { showMsg('registerMsg','❌ '+error.message,'error'); return; }
+        if (error) {
+            showMsg('registerMsg', translateAuthError(error.message), 'error');
+            return;
+        }
         if (data.user) {
-            // users テーブルに role を保存
             await sb.from('users').upsert({ id: data.user.id, name, role }, { onConflict: 'id' });
-            // 編集者の場合は editors テーブルにも登録
             if (role === 'editor') {
                 await sb.from('editors').upsert({ id: data.user.id, name }, { onConflict: 'id' });
             }
             showMsg('registerMsg','✅ アカウントを作成しました！','success');
             setTimeout(() => loadMypage(data.user), 1500);
         } else {
-            showMsg('registerMsg','📩 確認メールを送信しました。','info');
+            showMsg('registerMsg','📩 確認メールを送信しました。メールを確認してください。','info');
         }
+    }
+
+    // ===== Supabaseエラーメッセージ日本語化 =====
+    function translateAuthError(msg) {
+        if (msg.includes('email rate limit exceeded') || msg.includes('rate limit')) {
+            return '⚠️ メール送信の上限に達しました。\n\nこれはSupabaseの無料プランの制限（1時間に数件まで）です。\n少し時間をおいてから再度お試しください。';
+        }
+        if (msg.includes('User already registered') || msg.includes('already been registered')) {
+            return '⚠️ このメールアドレスはすでに登録されています。ログインをお試しください。';
+        }
+        if (msg.includes('Password should be at least')) {
+            return '⚠️ パスワードは6文字以上にしてください。';
+        }
+        if (msg.includes('Invalid email')) {
+            return '⚠️ メールアドレスの形式が正しくありません。';
+        }
+        if (msg.includes('signup disabled') || msg.includes('Signups not allowed')) {
+            return '⚠️ 現在新規登録が無効になっています。管理者にお問い合わせください。';
+        }
+        if (msg.includes('Email not confirmed')) {
+            return '⚠️ メールアドレスの確認が完了していません。届いた確認メールのリンクをクリックしてください。';
+        }
+        // ログインエラー
+        if (msg.includes('Invalid login credentials')) {
+            return '❌ メールアドレスまたはパスワードが間違っています。';
+        }
+        if (msg.includes('Email link is invalid') || msg.includes('Token has expired')) {
+            return '⚠️ リンクの有効期限が切れています。再度お試しください。';
+        }
+        return '❌ エラーが発生しました: ' + msg;
     }
 
     // ===== マイページ読み込み（ロール判定） =====
@@ -1243,7 +1280,7 @@
             await loadClientList();
         } else {
             // ===== クライアントモード：自分が送った編集者一覧（既存チャット） =====
-            document.getElementById('chatRoleBadge').textContent  = '🎬 クライアント';
+            document.getElementById('chatRoleBadge').textContent  = '🎬 クリエイター';
             document.getElementById('chatRoleBadge').className    = 'text-xs font-bold px-3 py-1 rounded-full bg-cyan-100 text-cyan-700 flex-shrink-0';
             document.getElementById('chatHeaderTitle').textContent = '編集者へのメッセージ';
             document.getElementById('chatEmptyMsg').textContent    = '依頼ページから編集者へメッセージを送れます';
