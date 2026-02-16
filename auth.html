@@ -139,7 +139,16 @@
         @media (min-width: 768px) {
             .mypage-layout { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
         }
-        /* ロール選択カード */
+        /* 稼働状況カード */
+        .availability-card input:checked + div { box-shadow: 0 0 0 3px currentColor; }
+        .availability-card input[value="受付中"]:checked + div  { border-color: #10b981 !important; box-shadow: 0 0 0 3px rgba(16,185,129,0.25); }
+        .availability-card input[value="混雑中"]:checked + div  { border-color: #f59e0b !important; box-shadow: 0 0 0 3px rgba(245,158,11,0.25); }
+        .availability-card input[value="受付停止"]:checked + div { border-color: #ef4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,0.25); }
+        /* 稼働バッジ（index.html共通） */
+        .avail-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; }
+        .avail-open  { background:#d1fae5; color:#065f46; }
+        .avail-busy  { background:#fef3c7; color:#92400e; }
+        .avail-stop  { background:#fee2e2; color:#991b1b; }
         .role-card input:checked + div { border-color: #06b6d4 !important; background: #ecfeff !important; box-shadow: 0 0 0 3px rgba(6,182,212,0.2); }
         .role-card div:hover { border-color: #06b6d4 !important; }
         /* クライアント用お気に入りカード */
@@ -366,6 +375,34 @@
                         <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">表示名 <span class="text-red-400">*</span></label>
                         <input id="mpName" type="text" placeholder="例：山田 太郎"
                             class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    </div>
+
+                    <!-- 稼働状況 -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-3">稼働状況</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label class="availability-card cursor-pointer">
+                                <input type="radio" name="availability" value="受付中" class="hidden">
+                                <div class="border-2 border-emerald-200 bg-emerald-50 rounded-xl p-3 text-center transition-all hover:border-emerald-400">
+                                    <div class="text-lg mb-1">🟢</div>
+                                    <div class="text-xs font-black text-emerald-700">受付中</div>
+                                </div>
+                            </label>
+                            <label class="availability-card cursor-pointer">
+                                <input type="radio" name="availability" value="混雑中" class="hidden">
+                                <div class="border-2 border-amber-200 bg-amber-50 rounded-xl p-3 text-center transition-all hover:border-amber-400">
+                                    <div class="text-lg mb-1">🟡</div>
+                                    <div class="text-xs font-black text-amber-700">混雑中</div>
+                                </div>
+                            </label>
+                            <label class="availability-card cursor-pointer">
+                                <input type="radio" name="availability" value="受付停止" class="hidden">
+                                <div class="border-2 border-red-200 bg-red-50 rounded-xl p-3 text-center transition-all hover:border-red-400">
+                                    <div class="text-lg mb-1">🔴</div>
+                                    <div class="text-xs font-black text-red-700">受付停止</div>
+                                </div>
+                            </label>
+                        </div>
                     </div>
 
                     <!-- 単価 -->
@@ -872,6 +909,11 @@
         document.getElementById('mpPrice').value       = data.price         || '';
         document.getElementById('imageUrlInput').value = data.image_url     || '';
 
+        // 稼働状況
+        const avail = data.availability || '受付中';
+        const availRadio = document.querySelector(`input[name="availability"][value="${avail}"]`);
+        if (availRadio) availRadio.checked = true;
+
         // SNSリンク
         const sns = data.sns_links || {};
         document.getElementById('snYoutube').value   = sns.youtube   || '';
@@ -1059,6 +1101,7 @@
 
         const tools  = Array.from(document.querySelectorAll('#toolsChips input:checked')).map(c=>c.value);
         const genres = Array.from(document.querySelectorAll('#genreChips input:checked')).map(c=>c.value);
+        const avail  = document.querySelector('input[name="availability"]:checked')?.value || '受付中';
         const sns = {
             youtube:   document.getElementById('snYoutube').value.trim()   || null,
             tiktok:    document.getElementById('snTiktok').value.trim()    || null,
@@ -1067,22 +1110,22 @@
         };
 
         const { error } = await sb.from('editors').upsert({
-            id:        user.id,
+            id:           user.id,
             name,
-            price:     document.getElementById('mpPrice').value.trim()       || null,
-            image_url: document.getElementById('imageUrlInput').value.trim() || null,
-            sns_links: sns,
+            price:        document.getElementById('mpPrice').value.trim()       || null,
+            image_url:    document.getElementById('imageUrlInput').value.trim() || null,
+            sns_links:    sns,
             tools,
             genres,
+            availability: avail,
         }, { onConflict: 'id' });
 
         if (error) { console.error(error); showMsg('mypageStatus','❌ '+error.message,'error'); return; }
 
-        // UI反映
         const currentData = {
             name, price: document.getElementById('mpPrice').value.trim(),
             image_url: document.getElementById('imageUrlInput').value.trim(),
-            tools, genres,
+            tools, genres, availability: avail,
         };
         renderMypage(currentData, user);
         showMsg('mypageStatus','✅ プロフィールを保存しました！','success');
@@ -1307,7 +1350,6 @@
 
     // ===== 編集者：クライアント一覧を読み込む =====
     async function loadClientList() {
-        // 自分がreceiver_idになっているメッセージのsender_idを重複なく取得
         const { data: msgs } = await sb.from('messages')
             .select('sender_id, created_at, content')
             .eq('receiver_id', currentUserId)
@@ -1319,28 +1361,27 @@
             return;
         }
 
-        // sender_idをユニーク化し最新メッセージを保持
         const seen = new Map();
         msgs.forEach(m => { if (!seen.has(m.sender_id)) seen.set(m.sender_id, m); });
         const uniqueSenders = Array.from(seen.values());
-
-        // 名前を取得
         const senderIds = uniqueSenders.map(m => m.sender_id);
-        const { data: senderEditors } = await sb.from('editors').select('id, name, image_url').in('id', senderIds);
+
+        // usersテーブルから名前・アバターを取得（クリエイターはeditorsにいない）
+        const { data: usersData } = await sb.from('users').select('id, name, avatar_url').in('id', senderIds);
         const nameMap = {};
-        (senderEditors || []).forEach(e => { nameMap[e.id] = { name: e.name, avatar: e.image_url }; });
+        (usersData || []).forEach(u => { nameMap[u.id] = { name: u.name, avatar: u.avatar_url }; });
 
         listEl.innerHTML = '';
         uniqueSenders.forEach(m => {
             const info    = nameMap[m.sender_id] || {};
-            const name    = info.name || m.sender_id.slice(0, 8) + '...';
+            const name    = info.name || 'ユーザー';
             const avatar  = info.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${m.sender_id}`;
-            const preview = (m.content || '').slice(0, 24) + ((m.content || '').length > 24 ? '…' : '');
+            const preview = (m.content || '').replace(/\n/g,' ').slice(0, 28) + ((m.content || '').length > 28 ? '…' : '');
             const item = document.createElement('button');
             item.className = 'w-full flex items-center gap-2.5 px-3 py-3 hover:bg-cyan-50 transition-colors text-left border-b border-slate-100';
             item.dataset.clientId = m.sender_id;
             item.innerHTML = `
-                <img src="${avatar}" class="w-8 h-8 rounded-xl object-cover flex-shrink-0" alt="">
+                <img src="${avatar}" class="w-8 h-8 rounded-full object-cover flex-shrink-0" alt="">
                 <div class="min-w-0 flex-1">
                     <div class="text-xs font-black text-slate-700 truncate">${name}</div>
                     <div class="text-[11px] text-slate-400 truncate">${preview}</div>
@@ -1443,30 +1484,78 @@
         scrollChatBottom();
     }
 
+    // ===== アバターキャッシュ（ID → URL） =====
+    const avatarCache = {};
+
+    async function resolveAvatar(userId) {
+        if (avatarCache[userId]) return avatarCache[userId];
+        // usersテーブル（クリエイター・編集者共通）
+        const { data: u } = await sb.from('users').select('avatar_url').eq('id', userId).maybeSingle();
+        if (u?.avatar_url) { avatarCache[userId] = u.avatar_url; return u.avatar_url; }
+        // editorsテーブル（image_url）
+        const { data: e } = await sb.from('editors').select('image_url').filter('id::text','eq',userId).maybeSingle();
+        if (e?.image_url) { avatarCache[userId] = e.image_url; return e.image_url; }
+        const fallback = `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
+        avatarCache[userId] = fallback;
+        return fallback;
+    }
+
     function appendMessage(msg, isMe, doScroll = true) {
         const container = document.getElementById('chatMessages');
         const empty = container.querySelector('.text-center');
         if (empty) empty.remove();
 
-        const time      = new Date(msg.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-        const avatarSrc = isMe
-            ? (document.getElementById('avatarImg').src || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUserId}`)
-            : `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`;
-        const senderLabel = isMe ? 'あなた' : (chatPartnerName || '相手');
+        const time = new Date(msg.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        const senderId = isMe ? currentUserId : msg.sender_id;
 
+        // アバターを非同期で取得してからDOM挿入
         const wrap = document.createElement('div');
         wrap.className = 'chat-bubble-wrap';
         wrap.innerHTML = `
             <div class="chat-row ${isMe ? 'me' : ''}">
-                <img src="${avatarSrc}" class="chat-avatar-sm" alt="">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${senderId}" class="chat-avatar-sm" data-uid="${senderId}" alt="">
                 <div class="chat-msg-group">
-                    <div class="chat-sender-name">${senderLabel}</div>
                     <div class="chat-bubble ${isMe ? 'me' : 'them'}">${escapeHtml(msg.content)}</div>
                     <div class="chat-time">${time}</div>
                 </div>
             </div>`;
         container.appendChild(wrap);
+
+        // 非同期でアバターを正しい画像に差し替え
+        resolveAvatar(senderId).then(url => {
+            const img = wrap.querySelector(`img[data-uid="${senderId}"]`);
+            if (img) img.src = url;
+        });
+
         if (doScroll) scrollChatBottom();
+    }
+
+    function appendClientMessage(msg, isMe, doScroll = true) {
+        const container = document.getElementById('clientChatMessages');
+        const empty = container.querySelector('.text-center');
+        if (empty) empty.remove();
+
+        const time = new Date(msg.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        const senderId = isMe ? clientUserId : msg.sender_id;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'chat-bubble-wrap';
+        wrap.innerHTML = `
+            <div class="chat-row ${isMe ? 'me' : ''}">
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${senderId}" class="chat-avatar-sm" data-uid="${senderId}" alt="">
+                <div class="chat-msg-group">
+                    <div class="chat-bubble ${isMe ? 'me' : 'them'}">${escapeHtml(msg.content)}</div>
+                    <div class="chat-time">${time}</div>
+                </div>
+            </div>`;
+        container.appendChild(wrap);
+
+        resolveAvatar(senderId).then(url => {
+            const img = wrap.querySelector(`img[data-uid="${senderId}"]`);
+            if (img) img.src = url;
+        });
+
+        if (doScroll) container.scrollTop = container.scrollHeight;
     }
 
     async function sendMessage() {
@@ -1773,29 +1862,6 @@
             appendClientMessage(msg, isMe, false);
         });
         container.scrollTop = container.scrollHeight;
-    }
-
-    function appendClientMessage(msg, isMe, doScroll = true) {
-        const container = document.getElementById('clientChatMessages');
-        const empty = container.querySelector('.text-center');
-        if (empty) empty.remove();
-        const time = new Date(msg.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-        const myAvatar = document.getElementById('clientAvatarImg').src || `https://api.dicebear.com/7.x/avataaars/svg?seed=${clientUserId}`;
-        const avatarSrc = isMe ? myAvatar : `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`;
-        const senderLabel = isMe ? 'あなた' : (clientCurrentPartnerName || '編集者');
-        const wrap = document.createElement('div');
-        wrap.className = 'chat-bubble-wrap';
-        wrap.innerHTML = `
-            <div class="chat-row ${isMe ? 'me' : ''}">
-                <img src="${avatarSrc}" class="chat-avatar-sm" alt="">
-                <div class="chat-msg-group">
-                    <div class="chat-sender-name">${senderLabel}</div>
-                    <div class="chat-bubble ${isMe ? 'me' : 'them'}">${escapeHtml(msg.content)}</div>
-                    <div class="chat-time">${time}</div>
-                </div>
-            </div>`;
-        container.appendChild(wrap);
-        if (doScroll) container.scrollTop = container.scrollHeight;
     }
 
     async function sendClientMessage() {
