@@ -75,27 +75,36 @@
         .thumb-item:hover .thumb-play { opacity: 1; }
 
         /* ===== チャットUI ===== */
-        .chat-bubble-wrap { display: flex; flex-direction: column; gap: 10px; }
-        .chat-row { display: flex; align-items: flex-end; gap: 8px; }
-        .chat-row.me { flex-direction: row-reverse; }
-        .chat-avatar-sm { width: 30px; height: 30px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+        .chat-bubble-wrap { display: flex; flex-direction: column; gap: 12px; }
+        .chat-row { display: flex; align-items: flex-end; gap: 8px; max-width: 85%; }
+        .chat-row.me { flex-direction: row-reverse; margin-left: auto; }
+        .chat-row:not(.me) { margin-right: auto; }
+        .chat-avatar-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid white; box-shadow: 0 1px 4px rgba(0,0,0,0.12); }
+        .chat-msg-group { display: flex; flex-direction: column; gap: 2px; }
+        .chat-sender-name { font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 3px; padding: 0 4px; }
+        .chat-row.me .chat-sender-name { text-align: right; color: #06b6d4; }
         .chat-bubble {
-            max-width: 72%; padding: 10px 14px; border-radius: 18px;
-            font-size: 14px; line-height: 1.55; word-break: break-word;
+            max-width: 100%; padding: 10px 14px; border-radius: 18px;
+            font-size: 14px; line-height: 1.6; word-break: break-word;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
         }
         .chat-bubble.them {
             background: #f1f5f9; color: #1e293b;
-            border-bottom-left-radius: 4px;
+            border-bottom-left-radius: 5px;
         }
         .chat-bubble.me {
             background: linear-gradient(135deg, #06b6d4, #3b82f6);
-            color: white; border-bottom-right-radius: 4px;
+            color: white; border-bottom-right-radius: 5px;
         }
-        .chat-time { font-size: 10px; color: #94a3b8; margin-top: 2px; text-align: right; }
-        .chat-time.them { text-align: left; }
+        .chat-time { font-size: 10px; color: #94a3b8; margin-top: 3px; padding: 0 4px; }
+        .chat-row.me .chat-time { text-align: right; }
         .chat-date-divider {
             text-align: center; font-size: 11px; font-weight: 700;
             color: #94a3b8; padding: 8px 0;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .chat-date-divider::before, .chat-date-divider::after {
+            content: ''; flex: 1; height: 1px; background: #e2e8f0;
         }
         .chat-input-area {
             border-top: 2px solid #f1f5f9;
@@ -553,9 +562,14 @@
                 <div class="card p-6 text-center">
                     <div class="relative inline-block mb-4">
                         <img id="clientAvatarImg" src="https://api.dicebear.com/7.x/avataaars/svg?seed=client" alt="avatar"
-                            class="w-24 h-24 rounded-2xl avatar-ring object-cover mx-auto">
+                            class="w-24 h-24 rounded-2xl avatar-ring object-cover mx-auto cursor-pointer"
+                            onclick="document.getElementById('clientAvatarFile').click()" title="クリックして変更">
+                        <div class="absolute -bottom-1 -right-1 w-7 h-7 gradient-btn rounded-full flex items-center justify-center text-white text-xs shadow cursor-pointer"
+                            onclick="document.getElementById('clientAvatarFile').click()">✏️</div>
+                        <input type="file" id="clientAvatarFile" accept="image/*" class="hidden" onchange="uploadClientAvatar(event)">
                     </div>
-                    <h2 class="text-xl font-black text-slate-800 mt-3" id="clientName">読み込み中...</h2>
+                    <div id="clientAvatarMsg" class="hidden text-xs font-bold px-3 py-1.5 rounded-xl mb-2"></div>
+                    <h2 class="text-xl font-black text-slate-800 mt-1" id="clientName">読み込み中...</h2>
                     <p class="text-cyan-500 font-bold text-sm mt-1" id="clientEmail"></p>
                     <span class="inline-block mt-2 px-3 py-1 bg-cyan-100 text-cyan-700 text-xs font-black rounded-full">🎬 クリエイター</span>
                     <button onclick="handleLogout()"
@@ -1250,10 +1264,11 @@
     }
 
     // ===== チャット（役割分離版）=====
-    let currentUserId   = null;
-    let currentUserName = null;
-    let chatPartnerId   = null;
-    let isEditor        = false;   // editorsテーブルに自分のレコードがあれば編集者
+    let currentUserId    = null;
+    let currentUserName  = null;
+    let chatPartnerId    = null;
+    let chatPartnerName  = null;   // 相手の表示名
+    let isEditor         = false;
     let chatSubscription = null;
 
     async function initChat() {
@@ -1366,21 +1381,19 @@
     async function selectChatPartner(partnerId, activeBtn = null) {
         chatPartnerId = partnerId;
 
-        // サイドバーのアクティブ状態
         document.querySelectorAll('#clientList button').forEach(b => b.classList.remove('bg-cyan-100'));
         if (activeBtn) activeBtn.classList.add('bg-cyan-100');
 
-        // 既存購読解除
         if (chatSubscription) { chatSubscription.unsubscribe(); chatSubscription = null; }
 
-        // ヘッダーに相手名を表示
-        const { data: partner } = await sb.from('editors').select('name, image_url').filter('id::text', 'eq', partnerId).maybeSingle();
-        const partnerName = partner?.name || '依頼者';
-        document.getElementById('chatHeaderTitle').textContent = partnerName + ' との会話';
+        // 相手名をusersテーブルから取得（クリエイターはeditorsにいない）
+        const { data: uPartner } = await sb.from('users').select('name').eq('id', partnerId).maybeSingle();
+        const { data: ePartner } = await sb.from('editors').select('name').filter('id::text','eq',partnerId).maybeSingle();
+        chatPartnerName = uPartner?.name || ePartner?.name || '相手';
+        document.getElementById('chatHeaderTitle').textContent = chatPartnerName + ' との会話';
 
         await loadMessages();
 
-        // リアルタイム購読
         chatSubscription = sb.channel('room-' + [currentUserId, partnerId].sort().join('-'))
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
                 const msg = payload.new;
@@ -1439,15 +1452,17 @@
         const avatarSrc = isMe
             ? (document.getElementById('avatarImg').src || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUserId}`)
             : `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`;
+        const senderLabel = isMe ? 'あなた' : (chatPartnerName || '相手');
 
         const wrap = document.createElement('div');
         wrap.className = 'chat-bubble-wrap';
         wrap.innerHTML = `
             <div class="chat-row ${isMe ? 'me' : ''}">
-                <img src="${avatarSrc}" class="chat-avatar-sm" alt="avatar">
-                <div>
+                <img src="${avatarSrc}" class="chat-avatar-sm" alt="">
+                <div class="chat-msg-group">
+                    <div class="chat-sender-name">${senderLabel}</div>
                     <div class="chat-bubble ${isMe ? 'me' : 'them'}">${escapeHtml(msg.content)}</div>
-                    <div class="chat-time ${isMe ? '' : 'them'}">${time}</div>
+                    <div class="chat-time">${time}</div>
                 </div>
             </div>`;
         container.appendChild(wrap);
@@ -1467,6 +1482,39 @@
             content,
         });
         if (error) { console.error('send error:', error); alert('送信に失敗しました: ' + error.message); }
+    }
+
+    // ===== クリエイター アバターアップロード =====
+    async function uploadClientAvatar(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const msgEl = document.getElementById('clientAvatarMsg');
+        const showAvatarMsg = (txt, type) => {
+            const s = { error:'bg-red-50 text-red-500', success:'bg-emerald-50 text-emerald-600', info:'bg-cyan-50 text-cyan-600' };
+            msgEl.className = `text-xs font-bold px-3 py-1.5 rounded-xl mb-2 ${s[type]}`;
+            msgEl.textContent = txt;
+            msgEl.classList.remove('hidden');
+            if (type !== 'error') setTimeout(() => msgEl.classList.add('hidden'), 3000);
+        };
+
+        if (file.size > 2 * 1024 * 1024) { showAvatarMsg('⚠️ 2MB以下の画像を選択してください', 'error'); return; }
+        showAvatarMsg('⏳ アップロード中...', 'info');
+
+        const { data: { user } } = await sb.auth.getUser();
+        const ext      = file.name.split('.').pop();
+        const filePath = `avatars/${user.id}.${ext}`;
+
+        const { error: upErr } = await sb.storage.from('avatars').upload(filePath, file, { upsert: true });
+        if (upErr) { showAvatarMsg('❌ ' + upErr.message, 'error'); return; }
+
+        const { data: urlData } = sb.storage.from('avatars').getPublicUrl(filePath);
+        const publicUrl = urlData.publicUrl + '?t=' + Date.now();
+
+        // usersテーブルに保存
+        await sb.from('users').update({ avatar_url: publicUrl }).eq('id', user.id);
+
+        document.getElementById('clientAvatarImg').src = publicUrl;
+        showAvatarMsg('✅ アイコンを更新しました', 'success');
     }
 
     function scrollChatBottom() {
@@ -1644,9 +1692,10 @@
     }
 
     // ===== クライアント用チャット =====
-    let clientChatPartnerId = null;
-    let clientChatSub       = null;
-    let clientUserId        = null;
+    let clientChatPartnerId      = null;
+    let clientCurrentPartnerName = null;   // 相手（編集者）の表示名
+    let clientChatSub            = null;
+    let clientUserId             = null;
 
     async function initClientChat() {
         const { data: { user } } = await sb.auth.getUser();
@@ -1685,7 +1734,8 @@
         if (clientChatSub) { clientChatSub.unsubscribe(); clientChatSub = null; }
 
         const { data: e } = await sb.from('editors').select('name').filter('id::text','eq',editorId).maybeSingle();
-        document.getElementById('clientChatTitle').textContent = (e?.name || '編集者') + ' との会話';
+        clientCurrentPartnerName = e?.name || '編集者';
+        document.getElementById('clientChatTitle').textContent = clientCurrentPartnerName + ' との会話';
 
         await loadClientMessages();
 
@@ -1729,13 +1779,21 @@
         const container = document.getElementById('clientChatMessages');
         const empty = container.querySelector('.text-center');
         if (empty) empty.remove();
-        const time = new Date(msg.created_at).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
-        const avatarSrc = isMe
-            ? (document.getElementById('clientAvatarImg').src || '')
-            : `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`;
+        const time = new Date(msg.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        const myAvatar = document.getElementById('clientAvatarImg').src || `https://api.dicebear.com/7.x/avataaars/svg?seed=${clientUserId}`;
+        const avatarSrc = isMe ? myAvatar : `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`;
+        const senderLabel = isMe ? 'あなた' : (clientCurrentPartnerName || '編集者');
         const wrap = document.createElement('div');
         wrap.className = 'chat-bubble-wrap';
-        wrap.innerHTML = `<div class="chat-row ${isMe?'me':''}"><img src="${avatarSrc}" class="chat-avatar-sm" alt=""><div><div class="chat-bubble ${isMe?'me':'them'}">${escapeHtml(msg.content)}</div><div class="chat-time ${isMe?'':'them'}">${time}</div></div></div>`;
+        wrap.innerHTML = `
+            <div class="chat-row ${isMe ? 'me' : ''}">
+                <img src="${avatarSrc}" class="chat-avatar-sm" alt="">
+                <div class="chat-msg-group">
+                    <div class="chat-sender-name">${senderLabel}</div>
+                    <div class="chat-bubble ${isMe ? 'me' : 'them'}">${escapeHtml(msg.content)}</div>
+                    <div class="chat-time">${time}</div>
+                </div>
+            </div>`;
         container.appendChild(wrap);
         if (doScroll) container.scrollTop = container.scrollHeight;
     }
@@ -1744,7 +1802,8 @@
         const input   = document.getElementById('clientChatInput');
         const content = input.value.trim();
         if (!content || !clientChatPartnerId) return;
-        input.value = ''; input.style.height = 'auto';
+        input.value = '';
+        input.style.height = 'auto';
         const { error } = await sb.from('messages').insert({ sender_id: clientUserId, receiver_id: clientChatPartnerId, content });
         if (error) alert('送信失敗: ' + error.message);
     }
