@@ -114,6 +114,10 @@
         }
         .editor-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 20px; border-top: 2px solid #f3f4f6; }
         .price { font-size: 1.5em; font-weight: bold; color: #06b6d4; }
+        .avail-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:3px 10px; border-radius:20px; }
+        .avail-open  { background:#d1fae5; color:#065f46; }
+        .avail-busy  { background:#fef3c7; color:#92400e; }
+        .avail-stop  { background:#fee2e2; color:#991b1b; }
         .btn-consult {
             background: linear-gradient(to right, #06b6d4, #3b82f6); color: white;
             padding: 12px 24px; border-radius: 20px; border: none; font-weight: 600; cursor: pointer; transition: all 0.3s;
@@ -370,12 +374,25 @@
             const projects = e.projects != null ? `${e.projects}件の実績` : '';
             const ratingStr = [rating, projects].filter(Boolean).join(' • ');
 
+            // 稼働状況バッジ
+            const avail = e.availability || '受付中';
+            const availMap = {
+                '受付中':  { cls: 'avail-open', icon: '🟢' },
+                '混雑中':  { cls: 'avail-busy', icon: '🟡' },
+                '受付停止':{ cls: 'avail-stop', icon: '🔴' },
+            };
+            const availInfo = availMap[avail] || availMap['受付中'];
+            const availBadge = `<span class="avail-badge ${availInfo.cls}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">${availInfo.icon} ${avail}</span>`;
+
             return `
             <div class="editor-card" data-os="${os}" data-software="${swList.join(',')}">
                 <div class="editor-header">
                     <img src="${avatar}" alt="${e.name}" class="editor-avatar">
                     <div class="editor-info">
-                        <h3>${e.name}</h3>
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                            <h3 style="margin:0;">${e.name}</h3>
+                            ${availBadge}
+                        </div>
                         <div class="specialty">${e.specialty || ''}</div>
                         <div class="rating">${ratingStr}</div>
                         <span class="os-badge ${osBadgeClass}">${osLabel}</span>
