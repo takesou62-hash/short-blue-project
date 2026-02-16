@@ -1,39 +1,1716 @@
--- ============================================
--- users テーブル作成 + role カラム設定
--- Supabase > SQL Editor に貼り付けて実行
--- ============================================
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shorts Match - マイページ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 60%, #e0e7ff 100%); }
+        .gradient-btn { background: linear-gradient(135deg, #06b6d4, #3b82f6); }
+        .gradient-text { background: linear-gradient(135deg, #06b6d4, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .card { background: white; border-radius: 24px; box-shadow: 0 4px 24px rgba(0,0,0,0.07); }
+        .fade-in { animation: fadeIn 0.5s ease both; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        .slide-down { animation: slideDown 0.3s ease both; }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+        .tool-chip input[type=checkbox] { display:none; }
+        .tool-chip input:checked + label {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white; border-color: transparent;
+            box-shadow: 0 2px 8px rgba(6,182,212,0.4);
+        }
+        .tool-chip label {
+            display: inline-block; padding: 6px 14px; border-radius: 20px;
+            border: 2px solid #e2e8f0; background: #f8fafc;
+            color: #475569; font-size: 13px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; user-select: none;
+        }
+        .tool-chip label:hover { border-color: #06b6d4; color: #06b6d4; }
+        .genre-chip input[type=checkbox] { display:none; }
+        .genre-chip input:checked + label {
+            background: linear-gradient(135deg, #8b5cf6, #ec4899);
+            color: white; border-color: transparent;
+        }
+        .genre-chip label {
+            display: inline-block; padding: 6px 14px; border-radius: 20px;
+            border: 2px solid #e2e8f0; background: #f8fafc;
+            color: #475569; font-size: 13px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s; user-select: none;
+        }
+        .tab-active { background: white; color: #1e293b; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .tab-inactive { color: #94a3b8; }
+        .avatar-ring {
+            border: 4px solid white;
+            box-shadow: 0 0 0 3px #06b6d4, 0 8px 24px rgba(6,182,212,0.3);
+        }
+        .preview-card {
+            background: white; border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            overflow: hidden; transition: transform 0.3s;
+        }
+        .preview-card:hover { transform: translateY(-4px); }
+        .thumb-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .thumb-item {
+            position: relative; border-radius: 10px; overflow: hidden; aspect-ratio: 9/16;
+            transform: translateY(0); transition: transform 0.25s ease, box-shadow 0.25s ease;
+            cursor: pointer;
+        }
+        .thumb-item:hover { transform: translateY(-6px); box-shadow: 0 12px 32px rgba(6,182,212,0.25); }
+        .thumb-item img { width:100%; height:100%; object-fit:cover; transition: opacity 0.2s; }
+        .thumb-item:hover img.thumb-static { opacity: 0; }
+        .thumb-item video.thumb-video {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            object-fit: cover; opacity: 0; transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .thumb-item:hover video.thumb-video { opacity: 1; }
+        .thumb-play {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.2s;
+        }
+        .thumb-item:hover .thumb-play { opacity: 1; }
 
--- 1. users テーブル作成（roleを持つ）
-CREATE TABLE IF NOT EXISTS public.users (
-    id         uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    name       text,
-    role       text        NOT NULL DEFAULT 'client' CHECK (role IN ('editor', 'client')),
-    avatar_url text,
-    created_at timestamptz DEFAULT now()
-);
+        /* ===== チャットUI ===== */
+        .chat-bubble-wrap { display: flex; flex-direction: column; gap: 10px; }
+        .chat-row { display: flex; align-items: flex-end; gap: 8px; }
+        .chat-row.me { flex-direction: row-reverse; }
+        .chat-avatar-sm { width: 30px; height: 30px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+        .chat-bubble {
+            max-width: 72%; padding: 10px 14px; border-radius: 18px;
+            font-size: 14px; line-height: 1.55; word-break: break-word;
+        }
+        .chat-bubble.them {
+            background: #f1f5f9; color: #1e293b;
+            border-bottom-left-radius: 4px;
+        }
+        .chat-bubble.me {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white; border-bottom-right-radius: 4px;
+        }
+        .chat-time { font-size: 10px; color: #94a3b8; margin-top: 2px; text-align: right; }
+        .chat-time.them { text-align: left; }
+        .chat-date-divider {
+            text-align: center; font-size: 11px; font-weight: 700;
+            color: #94a3b8; padding: 8px 0;
+        }
+        .chat-input-area {
+            border-top: 2px solid #f1f5f9;
+            padding: 12px 16px; display: flex; gap: 10px; align-items: flex-end;
+            background: white;
+        }
+        .chat-input-area textarea {
+            flex: 1; resize: none; border: 2px solid #e2e8f0; border-radius: 16px;
+            padding: 10px 14px; font-size: 14px; outline: none; font-family: inherit;
+            transition: border-color 0.2s; max-height: 120px; line-height: 1.5;
+        }
+        .chat-input-area textarea:focus { border-color: #06b6d4; }
+        .chat-send-btn {
+            width: 42px; height: 42px; border-radius: 14px; border: none; flex-shrink: 0;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            color: white; font-size: 18px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.2s, transform 0.15s;
+        }
+        .chat-send-btn:hover { opacity: 0.88; transform: scale(1.07); }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 16px; min-height: 200px; max-height: 420px; }
+        .section-tab { cursor: pointer; padding: 10px 20px; border-radius: 12px; font-weight: 700; font-size: 14px; transition: all 0.2s; }
+        .section-tab.active { background: linear-gradient(135deg, #06b6d4, #3b82f6); color: white; }
+        .section-tab:not(.active) { color: #64748b; }
+        .section-tab:not(.active):hover { background: #f1f5f9; }
+        input[type=text], input[type=url], input[type=email], input[type=password] {
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input:focus, textarea:focus {
+            box-shadow: 0 0 0 3px rgba(6,182,212,0.15);
+        }
+        @media (min-width: 768px) {
+            .mypage-layout { display: grid; grid-template-columns: 300px 1fr; gap: 24px; align-items: start; }
+        }
+        /* ロール選択カード */
+        .role-card input:checked + div { border-color: #06b6d4 !important; background: #ecfeff !important; box-shadow: 0 0 0 3px rgba(6,182,212,0.2); }
+        .role-card div:hover { border-color: #06b6d4 !important; }
+        /* クライアント用お気に入りカード */
+        .fav-editor-card { background: white; border-radius: 18px; padding: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; }
+        .fav-editor-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(6,182,212,0.15); }
+        /* 相談中スレッドカード */
+        .thread-card { background: white; border-radius: 18px; padding: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+        .thread-card:hover { border-color: #06b6d4; box-shadow: 0 4px 16px rgba(6,182,212,0.18); }
+        .unread-dot { width: 8px; height: 8px; background: #06b6d4; border-radius: 50%; flex-shrink: 0; }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen">
 
--- 2. RLS 有効化
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+<!-- ヘッダー -->
+<header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a href="index.html" class="flex items-center gap-2 group">
+            <div class="w-8 h-8 gradient-btn rounded-lg flex items-center justify-center text-white text-sm font-black shadow group-hover:scale-110 transition-transform">▶</div>
+            <span class="font-black text-xl text-cyan-600">Shorts Match</span>
+        </a>
+        <div class="flex items-center gap-3">
+            <span id="headerEmail" class="text-xs text-slate-400 hidden md:block"></span>
+            <a href="index.html" class="text-sm font-bold text-slate-500 hover:text-cyan-600 transition-colors px-3 py-1.5 rounded-lg hover:bg-cyan-50">← トップページに戻る</a>
+        </div>
+    </div>
+</header>
 
--- 3. 誰でも読める（編集者一覧表示のため）
-CREATE POLICY "users_select_all"
-ON public.users FOR SELECT TO authenticated
-USING (true);
+<main class="max-w-6xl mx-auto px-4 py-8">
 
--- 4. 自分のレコードだけ更新可
-CREATE POLICY "users_insert_own"
-ON public.users FOR INSERT TO authenticated
-WITH CHECK (auth.uid() = id);
+    <!-- ===== ログイン / 新規登録 ===== -->
+    <div id="authSection" class="max-w-md mx-auto fade-in">
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 gradient-btn rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-4 shadow-lg shadow-cyan-200">▶</div>
+            <h1 class="text-3xl font-black text-slate-800 mb-2">Shorts Match</h1>
+            <p class="text-slate-500">ログインまたは新規登録をしてください</p>
+        </div>
+        <div class="card p-8">
+            <div class="flex rounded-2xl bg-slate-100 p-1 mb-8">
+                <button id="tabLogin" onclick="switchTab('login')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all tab-active">ログイン</button>
+                <button id="tabRegister" onclick="switchTab('register')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all tab-inactive">新規登録</button>
+            </div>
+            <!-- ログイン -->
+            <div id="loginForm" class="space-y-4">
+                <input id="loginEmail" type="email" placeholder="メールアドレス"
+                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                <input id="loginPassword" type="password" placeholder="パスワード"
+                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                <div id="loginMsg" class="hidden text-sm font-bold px-4 py-3 rounded-xl"></div>
+                <button onclick="handleLogin()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:scale-[1.02] hover:opacity-90 transition-all">ログイン</button>
+            </div>
+            <!-- 新規登録 -->
+            <div id="registerForm" class="hidden space-y-4">
+                <!-- ロール選択 -->
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="role-card cursor-pointer" id="roleCardClient">
+                        <input type="radio" name="regRole" value="client" class="hidden" checked>
+                        <div class="border-2 border-cyan-400 bg-cyan-50 rounded-2xl p-4 text-center transition-all">
+                            <div class="text-3xl mb-2">🎬</div>
+                            <div class="font-black text-sm text-slate-800">クライアント</div>
+                            <div class="text-xs text-slate-500 mt-1">動画制作を依頼したい</div>
+                        </div>
+                    </label>
+                    <label class="role-card cursor-pointer" id="roleCardEditor">
+                        <input type="radio" name="regRole" value="editor" class="hidden">
+                        <div class="border-2 border-slate-200 bg-slate-50 rounded-2xl p-4 text-center transition-all">
+                            <div class="text-3xl mb-2">✏️</div>
+                            <div class="font-black text-sm text-slate-800">編集者</div>
+                            <div class="text-xs text-slate-500 mt-1">動画編集を受注したい</div>
+                        </div>
+                    </label>
+                </div>
+                <input id="regName" type="text" placeholder="お名前（表示名）"
+                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                <input id="regEmail" type="email" placeholder="メールアドレス"
+                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                <input id="regPassword" type="password" placeholder="パスワード（6文字以上）"
+                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                <div id="registerMsg" class="hidden text-sm font-bold px-4 py-3 rounded-xl"></div>
+                <button onclick="handleRegister()" class="w-full gradient-btn text-white py-4 rounded-2xl font-bold shadow-lg shadow-cyan-200 hover:scale-[1.02] hover:opacity-90 transition-all">アカウントを作成</button>
+            </div>
+        </div>
+    </div>
 
-CREATE POLICY "users_update_own"
-ON public.users FOR UPDATE TO authenticated
-USING (auth.uid() = id);
+    <!-- ===== マイページ ===== -->
+    <div id="mypageSection" class="hidden fade-in">
+        <div class="mypage-layout">
 
--- 5. 既存の editors ユーザーを editor ロールで移行
-INSERT INTO public.users (id, name, role)
-SELECT id, name, 'editor'
-FROM public.editors
-ON CONFLICT (id) DO UPDATE SET role = 'editor', name = EXCLUDED.name;
+            <!-- 左カラム：プロフィールカード＋プレビュー -->
+            <div class="space-y-5">
 
--- 6. 確認
-SELECT id, name, role, created_at FROM public.users LIMIT 10;
+                <!-- プロフィールカード -->
+                <div class="card p-6 text-center">
+                    <!-- アバター -->
+                    <div class="relative inline-block mb-4">
+                        <img id="avatarImg" src="" alt="avatar"
+                            class="w-24 h-24 rounded-2xl avatar-ring object-cover mx-auto">
+                        <div class="absolute -bottom-1 -right-1 w-7 h-7 gradient-btn rounded-full flex items-center justify-center text-white text-xs shadow cursor-pointer"
+                            onclick="document.getElementById('imageUrlInput').focus()">✏️</div>
+                    </div>
+                    <h2 class="text-xl font-black text-slate-800 mt-3" id="mypageName">読み込み中...</h2>
+                    <p class="text-cyan-500 font-bold text-sm mt-1" id="mypageEmail"></p>
+                    <!-- ツールバッジ -->
+                    <div id="profileToolBadges" class="flex flex-wrap gap-1.5 justify-center mt-3"></div>
+                    <!-- 単価 -->
+                    <div id="profilePrice" class="mt-3 text-2xl font-black gradient-text"></div>
+                    <button onclick="handleLogout()"
+                        class="mt-4 w-full text-slate-400 text-sm py-2.5 rounded-xl border-2 border-slate-100 hover:text-red-500 hover:border-red-100 transition-all font-bold">
+                        ログアウト
+                    </button>
+                </div>
+
+                <!-- 実績・評価カード -->
+                <div class="card p-5">
+                    <h3 class="font-black text-slate-700 text-sm mb-4 flex items-center gap-2">
+                        📊 実績・評価
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- 案件数 -->
+                        <div class="bg-cyan-50 rounded-2xl p-4 text-center">
+                            <div class="text-3xl font-black gradient-text" id="statsProjects">-</div>
+                            <div class="text-xs font-bold text-slate-400 mt-1">受注案件数</div>
+                        </div>
+                        <!-- 評価 -->
+                        <div class="bg-amber-50 rounded-2xl p-4 text-center">
+                            <div class="text-3xl font-black text-amber-500" id="statsRating">-</div>
+                            <div class="text-xs font-bold text-slate-400 mt-1">平均評価 ⭐</div>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 text-center mt-3">実績・評価は管理者が更新します</p>
+                </div>
+
+                <!-- 公開プレビュー -->
+                <div class="card p-5">
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="text-base font-black text-slate-700">👁 公開プレビュー</span>
+                        <span class="text-xs bg-cyan-100 text-cyan-600 font-bold px-2 py-0.5 rounded-full">他のユーザーから見た姿</span>
+                    </div>
+                    <div class="preview-card">
+                        <div class="h-1.5 bg-gradient-to-r from-cyan-400 to-blue-500"></div>
+                        <div class="p-4">
+                            <div class="flex items-center gap-3 mb-3">
+                                <img id="previewAvatar" src="" class="w-12 h-12 rounded-xl object-cover border-2 border-cyan-100">
+                                <div>
+                                    <div class="font-black text-slate-800 text-sm" id="previewName">未設定</div>
+                                    <div class="text-xs text-cyan-500 font-bold" id="previewGenres">得意ジャンル未設定</div>
+                                </div>
+                            </div>
+                            <div id="previewTools" class="flex flex-wrap gap-1 mb-3"></div>
+                            <div class="flex justify-between items-center pt-2 border-t border-slate-50">
+                                <div class="text-xs text-slate-400">単価目安</div>
+                                <div class="font-black text-cyan-600 text-sm" id="previewPrice">未設定</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 右カラム：タブ切り替えコンテンツ -->
+            <div class="space-y-5">
+
+                <!-- タブナビ -->
+                <div class="card p-2 flex gap-1 flex-wrap">
+                    <button class="section-tab active" onclick="switchSection('profile', this)">📝 プロフィール編集</button>
+                    <button class="section-tab" onclick="switchSection('portfolio', this)">🎬 ポートフォリオ</button>
+                    <button class="section-tab" onclick="switchSection('chat', this)">💬 チャット</button>
+                </div>
+
+                <!-- ===== プロフィール編集 ===== -->
+                <div id="sectionProfile" class="card p-7 space-y-6">
+
+                    <!-- プロフィール画像 -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-3">プロフィール画像</label>
+
+                        <!-- アップロードエリア -->
+                        <div id="uploadArea"
+                            class="relative border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center cursor-pointer hover:border-cyan-400 hover:bg-cyan-50/30 transition-all group"
+                            onclick="document.getElementById('avatarFileInput').click()"
+                            ondragover="event.preventDefault(); this.classList.add('border-cyan-400','bg-cyan-50/30')"
+                            ondragleave="this.classList.remove('border-cyan-400','bg-cyan-50/30')"
+                            ondrop="handleDrop(event)">
+                            <!-- ファイル入力（非表示） -->
+                            <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                            <div id="uploadPlaceholder">
+                                <div class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:bg-cyan-100 transition-colors">
+                                    <span class="text-2xl">📷</span>
+                                </div>
+                                <p class="font-bold text-slate-600 text-sm">クリックまたはドラッグ＆ドロップ</p>
+                                <p class="text-xs text-slate-400 mt-1">JPG / PNG / GIF / WebP（最大5MB）</p>
+                            </div>
+                            <!-- アップロード中表示 -->
+                            <div id="uploadProgress" class="hidden">
+                                <div class="w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                                    <svg class="animate-spin w-8 h-8 text-cyan-500" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                    </svg>
+                                </div>
+                                <p class="font-bold text-cyan-600 text-sm">アップロード中...</p>
+                            </div>
+                        </div>
+
+                        <!-- アップロード結果メッセージ -->
+                        <div id="uploadMsg" class="hidden text-xs font-bold px-3 py-2 rounded-xl mt-2 slide-down"></div>
+
+                        <!-- URL直接入力 or 自動生成 -->
+                        <div class="flex gap-2 mt-3">
+                            <input id="imageUrlInput" type="url" placeholder="画像URLを直接入力"
+                                class="flex-1 px-3 py-2.5 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 text-xs"
+                                oninput="previewAvatar(this.value)">
+                            <button onclick="randomAvatar()"
+                                class="px-3 py-2.5 bg-gradient-to-r from-violet-500 to-pink-500 text-white rounded-xl font-bold text-xs whitespace-nowrap hover:opacity-90 transition-all shadow shadow-violet-200">
+                                🎲 自動生成
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1.5 px-1">ファイルアップロードまたはURLを入力。「自動生成」でDiceBearアバターを作成</p>
+                    </div>
+
+                    <!-- 表示名 -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">表示名 <span class="text-red-400">*</span></label>
+                        <input id="mpName" type="text" placeholder="例：山田 太郎"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    </div>
+
+                    <!-- 単価 -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">単価目安</label>
+                        <input id="mpPrice" type="text" placeholder="例：¥3,000〜"
+                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50">
+                    </div>
+
+                    <!-- 使用可能ソフト -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-3">使用可能ソフト</label>
+                        <div class="flex flex-wrap gap-2" id="toolsChips">
+                            <span class="tool-chip"><input type="checkbox" id="sw1" value="Premiere Pro"><label for="sw1">🎬 Premiere Pro</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw2" value="After Effects"><label for="sw2">✨ After Effects</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw3" value="Final Cut Pro"><label for="sw3">🎥 Final Cut Pro</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw4" value="DaVinci Resolve"><label for="sw4">🎞️ DaVinci Resolve</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw5" value="Photoshop"><label for="sw5">🎨 Photoshop</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw6" value="Cinema 4D"><label for="sw6">🎭 Cinema 4D</label></span>
+                            <span class="tool-chip"><input type="checkbox" id="sw7" value="CapCut"><label for="sw7">📱 CapCut</label></span>
+                        </div>
+                    </div>
+
+                    <!-- 得意ジャンル -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-3">得意ジャンル</label>
+                        <div class="flex flex-wrap gap-2" id="genreChips">
+                            <span class="genre-chip"><input type="checkbox" id="g1" value="Shortsゲーム実況"><label for="g1">🎮 ゲーム実況</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g2" value="VTuber"><label for="g2">🌟 VTuber</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g3" value="料理・グルメ"><label for="g3">🍜 料理・グルメ</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g4" value="旅行・Vlog"><label for="g4">✈️ 旅行・Vlog</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g5" value="教育・ハウツー"><label for="g5">📚 教育・ハウツー</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g6" value="音楽・ダンス"><label for="g6">🎵 音楽・ダンス</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g7" value="スポーツ"><label for="g7">⚽ スポーツ</label></span>
+                            <span class="genre-chip"><input type="checkbox" id="g8" value="切り抜き"><label for="g8">✂️ 切り抜き</label></span>
+                        </div>
+                    </div>
+
+                    <!-- SNSアカウント -->
+                    <div>
+                        <label class="block text-xs font-black text-slate-400 uppercase tracking-wider mb-3">SNSアカウント</label>
+                        <div class="space-y-2.5">
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 text-center text-lg flex-shrink-0">▶️</span>
+                                <input id="snYoutube" type="url" placeholder="YouTube チャンネルURL"
+                                    class="flex-1 px-4 py-2.5 border-2 border-slate-200 rounded-xl outline-none focus:border-red-400 bg-slate-50 text-sm">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 text-center text-lg flex-shrink-0">🎵</span>
+                                <input id="snTiktok" type="url" placeholder="TikTok プロフィールURL"
+                                    class="flex-1 px-4 py-2.5 border-2 border-slate-200 rounded-xl outline-none focus:border-slate-400 bg-slate-50 text-sm">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 text-center text-lg flex-shrink-0">📸</span>
+                                <input id="snInstagram" type="url" placeholder="Instagram プロフィールURL"
+                                    class="flex-1 px-4 py-2.5 border-2 border-slate-200 rounded-xl outline-none focus:border-pink-400 bg-slate-50 text-sm">
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="w-8 text-center text-lg flex-shrink-0">🐦</span>
+                                <input id="snX" type="url" placeholder="X (Twitter) プロフィールURL"
+                                    class="flex-1 px-4 py-2.5 border-2 border-slate-200 rounded-xl outline-none focus:border-slate-600 bg-slate-50 text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ステータス -->
+                    <div id="mypageStatus" class="hidden text-sm font-bold px-4 py-3 rounded-xl text-center slide-down"></div>
+
+                    <button onclick="handleUpdate()"
+                        class="w-full gradient-btn text-white py-4 rounded-2xl font-black text-base shadow-lg shadow-cyan-200 hover:scale-[1.02] hover:opacity-90 transition-all">
+                        💾 プロフィールを保存する
+                    </button>
+                </div>
+
+                <!-- ===== ポートフォリオ ===== -->
+                <div id="sectionPortfolio" class="hidden space-y-5">
+
+                    <!-- 動画URL追加 -->
+                    <div class="card p-7">
+                        <h3 class="font-black text-slate-700 mb-1">🎬 動画を追加</h3>
+                        <p class="text-xs text-slate-400 mb-4">YouTube・YouTube Shorts・TikTokのURLに対応しています</p>
+
+                        <!-- 対応プラットフォームバッジ -->
+                        <div class="flex gap-2 mb-4">
+                            <span class="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-100">
+                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.19a3.02 3.02 0 00-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 00.5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 002.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 002.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>
+                                YouTube
+                            </span>
+                            <span class="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-red-50 text-red-500 border border-red-100">
+                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.5 6.19a3.02 3.02 0 00-2.12-2.14C19.54 3.5 12 3.5 12 3.5s-7.54 0-9.38.55A3.02 3.02 0 00.5 6.19C0 8.04 0 12 0 12s0 3.96.5 5.81a3.02 3.02 0 002.12 2.14C4.46 20.5 12 20.5 12 20.5s7.54 0 9.38-.55a3.02 3.02 0 002.12-2.14C24 15.96 24 12 24 12s0-3.96-.5-5.81zM9.75 15.02V8.98L15.5 12l-5.75 3.02z"/></svg>
+                                YouTube Shorts
+                            </span>
+                            <span class="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full bg-slate-800 text-white border border-slate-700">
+                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>
+                                TikTok
+                            </span>
+                        </div>
+
+                        <div class="flex gap-3">
+                            <input id="ytUrlInput" type="url" placeholder="動画のURLを貼り付け..."
+                                class="flex-1 px-4 py-3 border-2 border-slate-200 rounded-xl outline-none focus:border-cyan-400 bg-slate-50 text-sm">
+                            <button onclick="addVideo()"
+                                class="px-5 py-3 gradient-btn text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all shadow-lg shadow-cyan-200 whitespace-nowrap">
+                                追加
+                            </button>
+                        </div>
+                        <div id="addVideoMsg" class="hidden text-xs font-bold px-3 py-2 rounded-xl mt-2"></div>
+                    </div>
+
+                    <!-- サムネイルギャラリー -->
+                    <div class="card p-7">
+                        <div class="flex items-center justify-between mb-5">
+                            <h3 class="font-black text-slate-700">📸 作品ギャラリー</h3>
+                            <span class="text-xs text-slate-400 font-bold" id="videoCount">0 / 6</span>
+                        </div>
+                        <div id="thumbGallery" class="thumb-grid">
+                            <div class="col-span-3 text-center py-12 text-slate-300">
+                                <div class="text-4xl mb-2">🎬</div>
+                                <p class="text-sm font-bold">動画URLを追加してください</p>
+                            </div>
+                        </div>
+                        <button onclick="saveVideos()"
+                            id="saveVideoBtn"
+                            class="hidden w-full mt-5 gradient-btn text-white py-3.5 rounded-2xl font-black text-sm shadow-lg shadow-cyan-200 hover:scale-[1.02] transition-all">
+                            💾 ギャラリーを保存する
+                        </button>
+                        <div id="videoStatus" class="hidden text-sm font-bold px-4 py-3 rounded-xl text-center slide-down mt-3"></div>
+                    </div>
+
+                </div>
+
+                <!-- ===== チャット ===== -->
+                <div id="sectionChat" class="hidden">
+                    <div class="card overflow-hidden flex flex-col" style="min-height: 600px;">
+
+                        <!-- チャットヘッダー -->
+                        <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3 bg-white flex-shrink-0">
+                            <div class="w-9 h-9 gradient-btn rounded-xl flex items-center justify-center text-white text-base flex-shrink-0">💬</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-black text-slate-800 text-sm" id="chatHeaderTitle">メッセージ</div>
+                                <div class="text-xs text-slate-400" id="chatOnlineStatus">接続中...</div>
+                            </div>
+                            <span id="chatRoleBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-cyan-100 text-cyan-700 flex-shrink-0"></span>
+                        </div>
+
+                        <!-- 本体：サイドバー＋会話エリア -->
+                        <div class="flex flex-1 overflow-hidden" style="min-height: 520px;">
+
+                            <!-- 左サイドバー（クライアント一覧）＝編集者のみ表示 -->
+                            <div id="chatSidebar" class="hidden w-52 flex-shrink-0 border-r border-slate-100 flex flex-col bg-slate-50">
+                                <div class="px-3 py-3 border-b border-slate-100">
+                                    <p class="text-xs font-black text-slate-400 uppercase tracking-wider">依頼者一覧</p>
+                                </div>
+                                <div class="flex-1 overflow-y-auto" id="clientList">
+                                    <div class="text-center py-8 text-slate-300 text-xs">
+                                        <div class="text-2xl mb-1">📭</div>
+                                        <p>まだ依頼がありません</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 右：会話エリア -->
+                            <div class="flex-1 flex flex-col overflow-hidden">
+                                <!-- メッセージ一覧 -->
+                                <div class="chat-messages flex-1" id="chatMessages">
+                                    <div class="text-center py-16 text-slate-300">
+                                        <div class="text-4xl mb-3">💬</div>
+                                        <p class="text-sm font-bold" id="chatEmptyMsg">読み込み中...</p>
+                                    </div>
+                                </div>
+
+                                <!-- 入力エリア -->
+                                <div class="chat-input-area flex-shrink-0" id="chatInputArea">
+                                    <textarea id="chatInput" placeholder="メッセージを入力..." rows="1"
+                                        onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); sendMessage(); }"
+                                        oninput="this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+                                    <button class="chat-send-btn" onclick="sendMessage()">➤</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div><!-- /#mypageSection -->
+
+    <!-- ===== クライアント マイページ ===== -->
+    <div id="clientSection" class="hidden fade-in">
+        <div class="mypage-layout">
+
+            <!-- 左カラム -->
+            <div class="space-y-5">
+                <div class="card p-6 text-center">
+                    <div class="relative inline-block mb-4">
+                        <img id="clientAvatarImg" src="https://api.dicebear.com/7.x/avataaars/svg?seed=client" alt="avatar"
+                            class="w-24 h-24 rounded-2xl avatar-ring object-cover mx-auto">
+                    </div>
+                    <h2 class="text-xl font-black text-slate-800 mt-3" id="clientName">読み込み中...</h2>
+                    <p class="text-cyan-500 font-bold text-sm mt-1" id="clientEmail"></p>
+                    <span class="inline-block mt-2 px-3 py-1 bg-cyan-100 text-cyan-700 text-xs font-black rounded-full">🎬 クライアント</span>
+                    <button onclick="handleLogout()"
+                        class="mt-4 w-full text-slate-400 text-sm py-2.5 rounded-xl border-2 border-slate-100 hover:text-red-500 hover:border-red-100 transition-all font-bold">
+                        ログアウト
+                    </button>
+                </div>
+                <!-- 統計 -->
+                <div class="card p-5">
+                    <h3 class="font-black text-slate-700 text-sm mb-4">📊 利用状況</h3>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-500 font-bold">相談中の編集者</span>
+                            <span class="text-lg font-black gradient-text" id="clientStatThreads">-</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-500 font-bold">お気に入り登録</span>
+                            <span class="text-lg font-black text-pink-500" id="clientStatFavs">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右カラム -->
+            <div class="space-y-5">
+                <div class="card p-2 flex gap-1 flex-wrap">
+                    <button class="section-tab active" onclick="switchClientSection('threads', this)">💬 相談中の編集者</button>
+                    <button class="section-tab" onclick="switchClientSection('favorites', this)">❤️ お気に入り</button>
+                    <button class="section-tab" onclick="switchClientSection('clientChat', this)">📨 チャット</button>
+                </div>
+
+                <!-- 相談中スレッド -->
+                <div id="clientSectionThreads" class="card p-6">
+                    <h3 class="font-black text-slate-700 mb-4 flex items-center gap-2">
+                        💬 相談中の編集者
+                        <span class="text-xs font-bold text-slate-400">（メッセージを送った編集者）</span>
+                    </h3>
+                    <div id="threadList">
+                        <div class="text-center py-10 text-slate-300">
+                            <div class="text-4xl mb-2">📭</div>
+                            <p class="text-sm font-bold">まだ相談した編集者がいません</p>
+                            <a href="index.html" class="inline-block mt-3 text-xs font-bold text-cyan-500 hover:underline">編集者を探す →</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- お気に入り -->
+                <div id="clientSectionFavorites" class="hidden card p-6">
+                    <h3 class="font-black text-slate-700 mb-4 flex items-center gap-2">
+                        ❤️ お気に入りの編集者
+                        <span class="text-xs font-bold text-slate-400">（ハートを押して保存）</span>
+                    </h3>
+                    <div id="favoriteList">
+                        <div class="text-center py-10 text-slate-300">
+                            <div class="text-4xl mb-2">💔</div>
+                            <p class="text-sm font-bold">お気に入りに追加した編集者がいません</p>
+                            <a href="index.html" class="inline-block mt-3 text-xs font-bold text-cyan-500 hover:underline">編集者を探す →</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- クライアント用チャット -->
+                <div id="clientSectionClientChat" class="hidden">
+                    <div class="card overflow-hidden flex flex-col" style="min-height:560px;">
+                        <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3 bg-white flex-shrink-0">
+                            <div class="w-9 h-9 gradient-btn rounded-xl flex items-center justify-center text-white flex-shrink-0">💬</div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-black text-slate-800 text-sm" id="clientChatTitle">編集者へのメッセージ</div>
+                                <div class="text-xs text-slate-400">相談中の編集者とチャット</div>
+                            </div>
+                            <span class="text-xs font-bold px-3 py-1 rounded-full bg-cyan-100 text-cyan-700 flex-shrink-0">🎬 クライアント</span>
+                        </div>
+                        <div class="flex flex-1 overflow-hidden" style="min-height:440px;">
+                            <div class="w-48 flex-shrink-0 border-r border-slate-100 flex flex-col bg-slate-50">
+                                <div class="px-3 py-3 border-b border-slate-100">
+                                    <p class="text-xs font-black text-slate-400 uppercase">編集者一覧</p>
+                                </div>
+                                <div class="flex-1 overflow-y-auto" id="clientEditorSidebar">
+                                    <div class="text-center py-6 text-slate-300 text-xs"><div class="text-2xl mb-1">📭</div><p>相談中の編集者なし</p></div>
+                                </div>
+                            </div>
+                            <div class="flex-1 flex flex-col overflow-hidden">
+                                <div class="chat-messages flex-1" id="clientChatMessages">
+                                    <div class="text-center py-12 text-slate-300">
+                                        <div class="text-4xl mb-3">💬</div>
+                                        <p class="text-sm font-bold">編集者を選択してください</p>
+                                    </div>
+                                </div>
+                                <div class="chat-input-area flex-shrink-0">
+                                    <textarea id="clientChatInput" placeholder="メッセージを入力..." rows="1"
+                                        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendClientMessage();}"
+                                        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+                                    <button class="chat-send-btn" onclick="sendClientMessage()">➤</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div><!-- /#clientSection -->
+
+</main>
+
+<script>
+    // ===== Supabase =====
+    const SUPABASE_URL = 'https://dwmgwdhunvanrsautvtj.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_GzaEGCWBP7y0za2UVPiJNA_N3pdlgJ0';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let videoList = []; // 動画URL一覧
+
+    // ===== 起動 =====
+    window.addEventListener('load', async () => {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) {
+            await loadMypage(session.user);
+            // request.htmlから遷移してきた場合、チャットタブを自動で開く
+            const openChat = new URLSearchParams(location.search).get('open_chat');
+            if (openChat) {
+                setTimeout(() => {
+                    const chatBtn = document.querySelector('.section-tab:nth-child(3)');
+                    if (chatBtn) {
+                        switchSection('chat', chatBtn);
+                        // initChat完了後に相手を選択
+                        setTimeout(() => selectChatPartner(openChat), 1200);
+                    }
+                }, 600);
+            }
+        } else {
+            showAuth();
+        }
+    });
+
+    // ===== タブ =====
+    function switchTab(tab) {
+        const isLogin = tab === 'login';
+        document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
+        document.getElementById('registerForm').classList.toggle('hidden', isLogin);
+        document.getElementById('tabLogin').className  = `flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${isLogin  ? 'tab-active' : 'tab-inactive'}`;
+        document.getElementById('tabRegister').className = `flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${!isLogin ? 'tab-active' : 'tab-inactive'}`;
+    }
+
+    // ロールカードの見た目切り替え
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('input[name="regRole"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                document.querySelectorAll('.role-card > div').forEach(d => {
+                    d.style.borderColor = '#e2e8f0';
+                    d.style.background  = '#f8fafc';
+                    d.style.boxShadow   = 'none';
+                });
+                const checked = document.querySelector('input[name="regRole"]:checked');
+                if (checked) {
+                    const card = checked.nextElementSibling;
+                    card.style.borderColor = '#06b6d4';
+                    card.style.background  = '#ecfeff';
+                    card.style.boxShadow   = '0 0 0 3px rgba(6,182,212,0.2)';
+                }
+            });
+        });
+    });
+
+    // ===== セクションタブ =====
+    function switchSection(section, btn) {
+        document.querySelectorAll('.section-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('sectionProfile').classList.toggle('hidden', section !== 'profile');
+        document.getElementById('sectionPortfolio').classList.toggle('hidden', section !== 'portfolio');
+        document.getElementById('sectionChat').classList.toggle('hidden', section !== 'chat');
+        if (section === 'chat') initChat();
+    }
+
+    // ===== メッセージ =====
+    function showMsg(elId, msg, type) {
+        const el = document.getElementById(elId);
+        const s = { error:'bg-red-50 text-red-600 border border-red-200', success:'bg-emerald-50 text-emerald-600 border border-emerald-200', info:'bg-cyan-50 text-cyan-600 border border-cyan-200' };
+        el.className = `text-sm font-bold px-4 py-3 rounded-xl slide-down ${s[type]||s.info}`;
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    }
+    function hideMsg(id) { document.getElementById(id).classList.add('hidden'); }
+
+    // ===== ログイン =====
+    async function handleLogin() {
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        hideMsg('loginMsg');
+        if (!email || !password) { showMsg('loginMsg','⚠️ メールアドレスとパスワードを入力してください','error'); return; }
+        showMsg('loginMsg','⏳ ログイン中...','info');
+        const { data, error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) { showMsg('loginMsg','❌ '+error.message,'error'); return; }
+        showMsg('loginMsg','✅ ログインしました！マイページへ移動します','success');
+        setTimeout(() => loadMypage(data.user), 1000);
+    }
+
+    // ===== 新規登録 =====
+    async function handleRegister() {
+        const name     = document.getElementById('regName').value.trim();
+        const email    = document.getElementById('regEmail').value.trim();
+        const password = document.getElementById('regPassword').value;
+        const role     = document.querySelector('input[name="regRole"]:checked')?.value || 'client';
+        hideMsg('registerMsg');
+        if (!name)               { showMsg('registerMsg','⚠️ お名前を入力してください','error'); return; }
+        if (!email)              { showMsg('registerMsg','⚠️ メールアドレスを入力してください','error'); return; }
+        if (password.length < 6) { showMsg('registerMsg','⚠️ パスワードは6文字以上にしてください','error'); return; }
+        showMsg('registerMsg','⏳ アカウントを作成中...','info');
+
+        const { data, error } = await sb.auth.signUp({ email, password });
+        if (error) { showMsg('registerMsg','❌ '+error.message,'error'); return; }
+        if (data.user) {
+            // users テーブルに role を保存
+            await sb.from('users').upsert({ id: data.user.id, name, role }, { onConflict: 'id' });
+            // 編集者の場合は editors テーブルにも登録
+            if (role === 'editor') {
+                await sb.from('editors').upsert({ id: data.user.id, name }, { onConflict: 'id' });
+            }
+            showMsg('registerMsg','✅ アカウントを作成しました！','success');
+            setTimeout(() => loadMypage(data.user), 1500);
+        } else {
+            showMsg('registerMsg','📩 確認メールを送信しました。','info');
+        }
+    }
+
+    // ===== マイページ読み込み（ロール判定） =====
+    async function loadMypage(user) {
+        document.getElementById('headerEmail').textContent = user.email;
+
+        // usersテーブルでrole確認
+        const { data: uData } = await sb.from('users').select('role, name').eq('id', user.id).maybeSingle();
+
+        // usersテーブルにレコードがない場合 → editorsテーブルで判定（既存ユーザー互換）
+        if (!uData) {
+            const { data: eData } = await sb.from('editors').select('id').filter('id::text','eq',user.id).maybeSingle();
+            if (eData) {
+                // 既存編集者 → usersテーブルに移行登録してから編集者ページ
+                await sb.from('users').upsert({ id: user.id, role: 'editor' }, { onConflict: 'id' });
+                await loadEditorPage(user);
+            } else {
+                // 未登録 → クライアントとして扱う
+                await sb.from('users').upsert({ id: user.id, role: 'client' }, { onConflict: 'id' });
+                await loadClientPage(user);
+            }
+            return;
+        }
+
+        if (uData.role === 'editor') {
+            await loadEditorPage(user);
+        } else {
+            await loadClientPage(user);
+        }
+    }
+
+    // ===== 編集者マイページ読み込み（旧loadMypageの内容） =====
+    async function loadEditorPage(user) {
+        showMypage();
+        document.getElementById('mypageEmail').textContent = user.email;
+        document.getElementById('headerEmail').textContent = user.email;
+
+        const { data } = await sb.from('editors').select('*').filter('id::text','eq',user.id).maybeSingle();
+        if (!data) { renderMypage({ name: '未設定' }, user); return; }
+
+        // フォームに値をセット
+        document.getElementById('mpName').value        = data.name          || '';
+        document.getElementById('mpPrice').value       = data.price         || '';
+        document.getElementById('imageUrlInput').value = data.image_url     || '';
+
+        // SNSリンク
+        const sns = data.sns_links || {};
+        document.getElementById('snYoutube').value   = sns.youtube   || '';
+        document.getElementById('snTiktok').value    = sns.tiktok    || '';
+        document.getElementById('snInstagram').value = sns.instagram || '';
+        document.getElementById('snX').value         = sns.x         || '';
+
+        // 実績・評価
+        document.getElementById('statsProjects').textContent = data.projects != null ? data.projects + '件' : '-';
+        document.getElementById('statsRating').textContent   = data.rating   != null ? data.rating           : '-';
+
+        // ツールチェック
+        const tools = Array.isArray(data.tools) ? data.tools : [];
+        document.querySelectorAll('#toolsChips input[type=checkbox]').forEach(cb => {
+            cb.checked = tools.includes(cb.value);
+        });
+
+        // ジャンルチェック
+        const genres = Array.isArray(data.genres) ? data.genres : [];
+        document.querySelectorAll('#genreChips input[type=checkbox]').forEach(cb => {
+            cb.checked = genres.includes(cb.value);
+        });
+
+        // 動画リスト
+        videoList = Array.isArray(data.sample_videos) ? data.sample_videos : [];
+        renderGallery();
+
+        renderMypage(data, user);
+    }
+
+    // ===== UI反映 =====
+    function renderMypage(data, user) {
+        const name   = data.name  || '未設定';
+        const price  = data.price || '';
+        const tools  = Array.isArray(data.tools)  ? data.tools  : [];
+        const genres = Array.isArray(data.genres) ? data.genres : [];
+
+        // アバター
+        const avatarUrl = data.image_url
+            || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+        document.getElementById('avatarImg').src    = avatarUrl;
+        document.getElementById('previewAvatar').src = avatarUrl;
+
+        // 名前・メール
+        document.getElementById('mypageName').textContent = name;
+        document.getElementById('previewName').textContent = name;
+
+        // 単価
+        document.getElementById('profilePrice').textContent = price ? price : '';
+        document.getElementById('previewPrice').textContent = price || '未設定';
+
+        // ジャンル
+        document.getElementById('previewGenres').textContent =
+            genres.length > 0 ? genres.slice(0,2).join(' / ') : '得意ジャンル未設定';
+
+        // ツールバッジ（プロフィールカード）
+        const badgeColors = {
+            'Premiere Pro':'bg-violet-100 text-violet-700',
+            'After Effects':'bg-blue-100 text-blue-700',
+            'Final Cut Pro':'bg-indigo-100 text-indigo-700',
+            'DaVinci Resolve':'bg-red-100 text-red-700',
+            'Photoshop':'bg-sky-100 text-sky-700',
+            'Cinema 4D':'bg-pink-100 text-pink-700',
+            'CapCut':'bg-emerald-100 text-emerald-700',
+        };
+        document.getElementById('profileToolBadges').innerHTML = tools.map(t =>
+            `<span class="text-xs font-bold px-2.5 py-1 rounded-full ${badgeColors[t]||'bg-slate-100 text-slate-600'}">${t}</span>`
+        ).join('');
+
+        // プレビューのツールバッジ
+        const toolIcons = {'Premiere Pro':'🎬','After Effects':'✨','Final Cut Pro':'🎥','DaVinci Resolve':'🎞️','Photoshop':'🎨','Cinema 4D':'🎭','CapCut':'📱'};
+        document.getElementById('previewTools').innerHTML = tools.slice(0,4).map(t =>
+            `<span class="text-xs font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600">${toolIcons[t]||'💻'} ${t}</span>`
+        ).join('');
+    }
+
+    // ===== 画像ファイルアップロード =====
+    function handleDrop(e) {
+        e.preventDefault();
+        document.getElementById('uploadArea').classList.remove('border-cyan-400','bg-cyan-50/30');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) uploadAvatarFile(file);
+        else alert('画像ファイルを選択してください');
+    }
+
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) uploadAvatarFile(file);
+    }
+
+    async function uploadAvatarFile(file) {
+        // 5MB上限チェック
+        if (file.size > 5 * 1024 * 1024) {
+            showUploadMsg('❌ ファイルサイズは5MB以下にしてください', 'error');
+            return;
+        }
+
+        // ① ローカルプレビューを即時反映
+        const localUrl = URL.createObjectURL(file);
+        document.getElementById('avatarImg').src     = localUrl;
+        document.getElementById('previewAvatar').src = localUrl;
+
+        // ② ローディング表示
+        document.getElementById('uploadPlaceholder').classList.add('hidden');
+        document.getElementById('uploadProgress').classList.remove('hidden');
+        hideMsg('uploadMsg');
+
+        try {
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) throw new Error('セッションが切れています。再ログインしてください');
+
+            // ③ ファイル名：userId.拡張子（既存ファイルを上書き）
+            const ext      = file.name.split('.').pop();
+            const filePath = `${user.id}.${ext}`;
+
+            const { error: upErr } = await sb.storage
+                .from('avatars')
+                .upload(filePath, file, { upsert: true, contentType: file.type });
+
+            if (upErr) throw upErr;
+
+            // ④ 公開URL取得
+            const { data: urlData } = sb.storage.from('avatars').getPublicUrl(filePath);
+            const publicUrl = urlData.publicUrl;
+
+            // ⑤ editorsテーブルのimage_urlを自動更新
+            const { error: dbErr } = await sb.from('editors').upsert(
+                { id: user.id, image_url: publicUrl },
+                { onConflict: 'id' }
+            );
+            if (dbErr) throw dbErr;
+
+            // ⑥ URL入力欄にも反映
+            document.getElementById('imageUrlInput').value = publicUrl;
+            document.getElementById('avatarImg').src        = publicUrl;
+            document.getElementById('previewAvatar').src    = publicUrl;
+
+            showUploadMsg('✅ アップロード完了！プロフィール画像を更新しました', 'success');
+
+        } catch (err) {
+            console.error('upload error:', err);
+            showUploadMsg('❌ ' + err.message, 'error');
+        } finally {
+            document.getElementById('uploadPlaceholder').classList.remove('hidden');
+            document.getElementById('uploadProgress').classList.add('hidden');
+            // ファイル入力をリセット（同じファイルを再選択できるように）
+            document.getElementById('avatarFileInput').value = '';
+        }
+    }
+
+    function showUploadMsg(msg, type) {
+        const el = document.getElementById('uploadMsg');
+        const s  = { error:'bg-red-50 text-red-600 border border-red-200', success:'bg-emerald-50 text-emerald-600 border border-emerald-200' };
+        el.className = `text-xs font-bold px-3 py-2 rounded-xl mt-2 slide-down ${s[type]||'bg-cyan-50 text-cyan-600'}`;
+        el.textContent = msg;
+        el.classList.remove('hidden');
+        if (type === 'success') setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+
+    // ===== アバタープレビュー =====
+    function previewAvatar(url) {
+        const src = url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${Math.random()}`;
+        document.getElementById('avatarImg').src     = src;
+        document.getElementById('previewAvatar').src = src;
+    }
+
+    function randomAvatar() {
+        const styles = ['avataaars','bottts','fun-emoji','lorelei','micah','personas'];
+        const style  = styles[Math.floor(Math.random() * styles.length)];
+        const seed   = Math.random().toString(36).slice(2);
+        const url    = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+        document.getElementById('imageUrlInput').value = url;
+        previewAvatar(url);
+    }
+
+    // ===== プロフィール保存 =====
+    async function handleUpdate() {
+        hideMsg('mypageStatus');
+        const name  = document.getElementById('mpName').value.trim();
+        if (!name) { showMsg('mypageStatus','⚠️ 表示名を入力してください','error'); return; }
+        showMsg('mypageStatus','⏳ 保存中...','info');
+
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) { showMsg('mypageStatus','❌ セッションが切れています','error'); return; }
+
+        const tools  = Array.from(document.querySelectorAll('#toolsChips input:checked')).map(c=>c.value);
+        const genres = Array.from(document.querySelectorAll('#genreChips input:checked')).map(c=>c.value);
+        const sns = {
+            youtube:   document.getElementById('snYoutube').value.trim()   || null,
+            tiktok:    document.getElementById('snTiktok').value.trim()    || null,
+            instagram: document.getElementById('snInstagram').value.trim() || null,
+            x:         document.getElementById('snX').value.trim()         || null,
+        };
+
+        const { error } = await sb.from('editors').upsert({
+            id:        user.id,
+            name,
+            price:     document.getElementById('mpPrice').value.trim()       || null,
+            image_url: document.getElementById('imageUrlInput').value.trim() || null,
+            sns_links: sns,
+            tools,
+            genres,
+        }, { onConflict: 'id' });
+
+        if (error) { console.error(error); showMsg('mypageStatus','❌ '+error.message,'error'); return; }
+
+        // UI反映
+        const currentData = {
+            name, price: document.getElementById('mpPrice').value.trim(),
+            image_url: document.getElementById('imageUrlInput').value.trim(),
+            tools, genres,
+        };
+        renderMypage(currentData, user);
+        showMsg('mypageStatus','✅ プロフィールを保存しました！','success');
+        setTimeout(() => hideMsg('mypageStatus'), 3000);
+    }
+
+    // ===== YouTubeサムネイル =====
+    // ===== 動画URL解析（YouTube通常・Shorts・TikTok対応）=====
+    function parseVideoUrl(url) {
+        // YouTube通常: watch?v=XXXX or youtu.be/XXXX
+        const ytNormal = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (ytNormal) return { type: 'youtube', id: ytNormal[1] };
+
+        // YouTube Shorts: /shorts/XXXX
+        const ytShorts = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+        if (ytShorts) return { type: 'youtube_shorts', id: ytShorts[1] };
+
+        // TikTok: /@user/video/XXXX or /v/XXXX
+        const tiktok = url.match(/tiktok\.com\/@[\w.-]+\/video\/(\d+)/);
+        if (tiktok) return { type: 'tiktok', id: tiktok[1], url };
+
+        // TikTok短縮URL: vm.tiktok.com / vt.tiktok.com
+        const tiktokShort = url.match(/(?:vm|vt)\.tiktok\.com\/([a-zA-Z0-9]+)/);
+        if (tiktokShort) return { type: 'tiktok', id: tiktokShort[1], url };
+
+        return null;
+    }
+
+    function addVideo() {
+        const addMsg = document.getElementById('addVideoMsg');
+        addMsg.classList.add('hidden');
+
+        if (videoList.length >= 6) {
+            addMsg.className = 'text-xs font-bold px-3 py-2 rounded-xl mt-2 bg-red-50 text-red-500 border border-red-100';
+            addMsg.textContent = '⚠️ 動画は最大6件まで追加できます';
+            addMsg.classList.remove('hidden');
+            return;
+        }
+
+        const url    = document.getElementById('ytUrlInput').value.trim();
+        const parsed = parseVideoUrl(url);
+
+        if (!parsed) {
+            addMsg.className = 'text-xs font-bold px-3 py-2 rounded-xl mt-2 bg-red-50 text-red-500 border border-red-100';
+            addMsg.textContent = '❌ 対応していないURLです。YouTube・YouTube Shorts・TikTokのURLを入力してください';
+            addMsg.classList.remove('hidden');
+            return;
+        }
+
+        const key = parsed.type + '_' + parsed.id;
+        if (videoList.find(v => (v.type + '_' + v.id) === key)) {
+            addMsg.className = 'text-xs font-bold px-3 py-2 rounded-xl mt-2 bg-amber-50 text-amber-600 border border-amber-100';
+            addMsg.textContent = '⚠️ この動画はすでに追加されています';
+            addMsg.classList.remove('hidden');
+            return;
+        }
+
+        videoList.push({ type: parsed.type, id: parsed.id, url });
+        document.getElementById('ytUrlInput').value = '';
+        renderGallery();
+    }
+
+    function removeVideo(index) {
+        videoList.splice(index, 1);
+        renderGallery();
+    }
+
+    function renderGallery() {
+        const gallery  = document.getElementById('thumbGallery');
+        const countEl  = document.getElementById('videoCount');
+        const saveBtn  = document.getElementById('saveVideoBtn');
+        countEl.textContent = `${videoList.length} / 6`;
+        saveBtn.classList.toggle('hidden', videoList.length === 0);
+
+        if (videoList.length === 0) {
+            gallery.innerHTML = `
+                <div class="col-span-3 text-center py-12 text-slate-300">
+                    <div class="text-4xl mb-2">🎬</div>
+                    <p class="text-sm font-bold">動画URLを追加してください</p>
+                </div>`;
+            return;
+        }
+
+        gallery.innerHTML = videoList.map((v, i) => {
+            const isYt     = v.type === 'youtube' || v.type === 'youtube_shorts' || !v.type;
+            const isTikTok = v.type === 'tiktok';
+            const badge    = v.type === 'youtube_shorts' ? 'Shorts' : isTikTok ? 'TikTok' : 'YouTube';
+            const badgeBg  = isTikTok ? '#010101' : '#ff0000';
+
+            let thumbSrc, linkUrl, hoverEmbed;
+
+            if (isYt) {
+                thumbSrc   = `https://img.youtube.com/vi/${v.id}/mqdefault.jpg`;
+                linkUrl    = v.type === 'youtube_shorts' ? `https://youtube.com/shorts/${v.id}` : `https://youtube.com/watch?v=${v.id}`;
+                hoverEmbed = `<iframe class="thumb-video"
+                    src="https://www.youtube.com/embed/${v.id}?autoplay=1&mute=1&controls=0&loop=1&playlist=${v.id}&rel=0"
+                    frameborder="0" allow="autoplay; encrypted-media" allowfullscreen
+                    style="position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity 0.3s;pointer-events:none;border-radius:10px;"></iframe>`;
+            } else if (isTikTok) {
+                // TikTok: サムネイルは黒背景のアイコン、ホバーで埋め込みiframeを表示
+                thumbSrc   = '';  // TikTokサムネイルは公式APIなし
+                linkUrl    = v.url || '#';
+                // TikTok oEmbed embed URL（video IDが数字の場合）
+                const ttEmbedUrl = `https://www.tiktok.com/embed/v2/${v.id}?autoplay=1&muted=1`;
+                hoverEmbed = `<iframe class="thumb-video"
+                    src="${ttEmbedUrl}"
+                    frameborder="0" allow="autoplay; encrypted-media"
+                    style="position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity 0.3s;pointer-events:none;border-radius:10px;"></iframe>`;
+            }
+
+            // TikTokのサムネイル背景（プレースホルダー）
+            const thumbHtml = isTikTok
+                ? `<div class="thumb-static" style="position:absolute;inset:0;background:#010101;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="white"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.78 1.52V6.75a4.85 4.85 0 01-1.01-.06z"/></svg>
+                    <span style="color:white;font-size:10px;font-weight:700;">TikTok</span>
+                   </div>`
+                : `<img class="thumb-static" src="${thumbSrc}" alt="${badge}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:opacity 0.2s;">`;
+
+            return `
+            <div class="thumb-item group relative"
+                style="position:relative;"
+                onmouseenter="activateVideoPreview(this)"
+                onmouseleave="deactivateVideoPreview(this)">
+                <a href="${linkUrl}" target="_blank" rel="noopener" style="display:block;width:100%;height:100%;position:relative;">
+                    ${thumbHtml}
+                    ${hoverEmbed}
+                    <div class="thumb-play" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.3);opacity:0;transition:opacity 0.2s;">
+                        <span style="width:40px;height:40px;background:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 4px 12px rgba(0,0,0,0.3);">▶</span>
+                    </div>
+                </a>
+                <span style="position:absolute;bottom:6px;left:6px;background:${badgeBg};color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;z-index:10;">${badge}</span>
+                <button onclick="removeVideo(${i})"
+                    style="position:absolute;top:6px;right:6px;width:22px;height:22px;background:#ef4444;color:white;border:none;border-radius:50%;font-size:11px;font-weight:900;cursor:pointer;opacity:0;transition:opacity 0.2s;z-index:10;display:flex;align-items:center;justify-content:center;"
+                    class="group-hover:opacity-100">✕</button>
+            </div>`;
+        }).join('');
+    }
+
+    // ===== ホバー動画プレビュー =====
+    function activateVideoPreview(el) {
+        const iframe = el.querySelector('iframe.thumb-video');
+        const static_ = el.querySelector('.thumb-static');
+        const playBtn  = el.querySelector('.thumb-play');
+        const delBtn   = el.querySelector('button');
+        if (iframe) iframe.style.opacity = '1';
+        if (static_) static_.style.opacity = '0';
+        if (playBtn) playBtn.style.opacity = '0';
+        if (delBtn)  delBtn.style.opacity  = '1';
+    }
+
+    function deactivateVideoPreview(el) {
+        const iframe  = el.querySelector('iframe.thumb-video');
+        const static_ = el.querySelector('.thumb-static');
+        const playBtn  = el.querySelector('.thumb-play');
+        const delBtn   = el.querySelector('button');
+        if (iframe) {
+            iframe.style.opacity = '0';
+            // iframeを再生成して動画を停止
+            const newSrc = iframe.src;
+            setTimeout(() => { if (iframe.parentNode) iframe.src = newSrc; }, 300);
+        }
+        if (static_) static_.style.opacity = '1';
+        if (playBtn) playBtn.style.opacity = '0';
+        if (delBtn)  delBtn.style.opacity  = '0';
+    }
+
+    async function saveVideos() {
+        hideMsg('videoStatus');
+        showMsg('videoStatus','⏳ 保存中...','info');
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) { showMsg('videoStatus','❌ セッションが切れています','error'); return; }
+        const { error } = await sb.from('editors').upsert({
+            id: user.id,
+            sample_videos: videoList,
+        }, { onConflict: 'id' });
+        if (error) { showMsg('videoStatus','❌ '+error.message,'error'); return; }
+        showMsg('videoStatus','✅ ギャラリーを保存しました！','success');
+        setTimeout(() => hideMsg('videoStatus'), 3000);
+    }
+
+    // ===== チャット（役割分離版）=====
+    let currentUserId   = null;
+    let currentUserName = null;
+    let chatPartnerId   = null;
+    let isEditor        = false;   // editorsテーブルに自分のレコードがあれば編集者
+    let chatSubscription = null;
+
+    async function initChat() {
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+        currentUserId = user.id;
+
+        document.getElementById('chatOnlineStatus').textContent = 'オンライン';
+
+        // 自分がeditorsテーブルに存在するか → 編集者判定
+        const { data: me } = await sb.from('editors').select('id, name').filter('id::text', 'eq', user.id).maybeSingle();
+        currentUserName = me?.name || 'あなた';
+        isEditor = !!me;
+
+        if (isEditor) {
+            // ===== 編集者モード：自分に届いたクライアント一覧を表示 =====
+            document.getElementById('chatRoleBadge').textContent  = '✏️ 編集者';
+            document.getElementById('chatRoleBadge').className    = 'text-xs font-bold px-3 py-1 rounded-full bg-blue-100 text-blue-700 flex-shrink-0';
+            document.getElementById('chatHeaderTitle').textContent = '受信した依頼';
+            document.getElementById('chatSidebar').classList.remove('hidden');
+            document.getElementById('chatSidebar').classList.add('flex');
+            document.getElementById('chatEmptyMsg').textContent    = '左のリストから依頼者を選択してください';
+
+            await loadClientList();
+        } else {
+            // ===== クライアントモード：自分が送った編集者一覧（既存チャット） =====
+            document.getElementById('chatRoleBadge').textContent  = '🎬 クライアント';
+            document.getElementById('chatRoleBadge').className    = 'text-xs font-bold px-3 py-1 rounded-full bg-cyan-100 text-cyan-700 flex-shrink-0';
+            document.getElementById('chatHeaderTitle').textContent = '編集者へのメッセージ';
+            document.getElementById('chatEmptyMsg').textContent    = '依頼ページから編集者へメッセージを送れます';
+
+            // クライアントは自分が送った相手（編集者）との会話を表示
+            await loadSentEditorList();
+        }
+    }
+
+    // ===== 編集者：クライアント一覧を読み込む =====
+    async function loadClientList() {
+        // 自分がreceiver_idになっているメッセージのsender_idを重複なく取得
+        const { data: msgs } = await sb.from('messages')
+            .select('sender_id, created_at, content')
+            .eq('receiver_id', currentUserId)
+            .order('created_at', { ascending: false });
+
+        const listEl = document.getElementById('clientList');
+        if (!msgs || msgs.length === 0) {
+            listEl.innerHTML = `<div class="text-center py-8 text-slate-300 text-xs"><div class="text-2xl mb-1">📭</div><p>まだ依頼がありません</p></div>`;
+            return;
+        }
+
+        // sender_idをユニーク化し最新メッセージを保持
+        const seen = new Map();
+        msgs.forEach(m => { if (!seen.has(m.sender_id)) seen.set(m.sender_id, m); });
+        const uniqueSenders = Array.from(seen.values());
+
+        // 名前を取得
+        const senderIds = uniqueSenders.map(m => m.sender_id);
+        const { data: senderEditors } = await sb.from('editors').select('id, name, image_url').in('id', senderIds);
+        const nameMap = {};
+        (senderEditors || []).forEach(e => { nameMap[e.id] = { name: e.name, avatar: e.image_url }; });
+
+        listEl.innerHTML = '';
+        uniqueSenders.forEach(m => {
+            const info    = nameMap[m.sender_id] || {};
+            const name    = info.name || m.sender_id.slice(0, 8) + '...';
+            const avatar  = info.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${m.sender_id}`;
+            const preview = (m.content || '').slice(0, 24) + ((m.content || '').length > 24 ? '…' : '');
+            const item = document.createElement('button');
+            item.className = 'w-full flex items-center gap-2.5 px-3 py-3 hover:bg-cyan-50 transition-colors text-left border-b border-slate-100';
+            item.dataset.clientId = m.sender_id;
+            item.innerHTML = `
+                <img src="${avatar}" class="w-8 h-8 rounded-xl object-cover flex-shrink-0" alt="">
+                <div class="min-w-0 flex-1">
+                    <div class="text-xs font-black text-slate-700 truncate">${name}</div>
+                    <div class="text-[11px] text-slate-400 truncate">${preview}</div>
+                </div>`;
+            item.onclick = () => selectChatPartner(m.sender_id, item);
+            listEl.appendChild(item);
+        });
+    }
+
+    // ===== クライアント：自分が送った編集者を取得 =====
+    async function loadSentEditorList() {
+        const { data: msgs } = await sb.from('messages')
+            .select('receiver_id')
+            .eq('sender_id', currentUserId)
+            .order('created_at', { ascending: false });
+
+        if (!msgs || msgs.length === 0) {
+            document.getElementById('chatEmptyMsg').textContent = '依頼ページから編集者へメッセージを送れます';
+            return;
+        }
+
+        // ユニーク化
+        const seen = new Set();
+        const ids  = [];
+        msgs.forEach(m => { if (!seen.has(m.receiver_id)) { seen.add(m.receiver_id); ids.push(m.receiver_id); } });
+
+        if (ids.length === 1) {
+            // 1件のみなら自動選択
+            await selectChatPartner(ids[0]);
+        } else {
+            // 複数の場合はサイドバー代わりに簡易プロンプト
+            document.getElementById('chatEmptyMsg').textContent = `${ids.length}件の編集者とやり取り中`;
+            // 最初の相手を自動選択
+            await selectChatPartner(ids[0]);
+        }
+    }
+
+    async function selectChatPartner(partnerId, activeBtn = null) {
+        chatPartnerId = partnerId;
+
+        // サイドバーのアクティブ状態
+        document.querySelectorAll('#clientList button').forEach(b => b.classList.remove('bg-cyan-100'));
+        if (activeBtn) activeBtn.classList.add('bg-cyan-100');
+
+        // 既存購読解除
+        if (chatSubscription) { chatSubscription.unsubscribe(); chatSubscription = null; }
+
+        // ヘッダーに相手名を表示
+        const { data: partner } = await sb.from('editors').select('name, image_url').filter('id::text', 'eq', partnerId).maybeSingle();
+        const partnerName = partner?.name || '依頼者';
+        document.getElementById('chatHeaderTitle').textContent = partnerName + ' との会話';
+
+        await loadMessages();
+
+        // リアルタイム購読
+        chatSubscription = sb.channel('room-' + [currentUserId, partnerId].sort().join('-'))
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                const msg = payload.new;
+                const sid = msg.sender_id.toString();
+                const rid = msg.receiver_id.toString();
+                const me  = currentUserId.toString();
+                const pt  = chatPartnerId.toString();
+                if ((sid === me && rid === pt) || (sid === pt && rid === me)) {
+                    appendMessage(msg, sid === me);
+                }
+            })
+            .subscribe();
+    }
+
+    async function loadMessages() {
+        const { data: msgs } = await sb.from('messages')
+            .select('*')
+            .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${chatPartnerId}),and(sender_id.eq.${chatPartnerId},receiver_id.eq.${currentUserId})`)
+            .order('created_at', { ascending: true });
+
+        const container = document.getElementById('chatMessages');
+        container.innerHTML = '';
+
+        if (!msgs || msgs.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-10 text-slate-300">
+                    <div class="text-3xl mb-2">✉️</div>
+                    <p class="text-sm font-bold">まだメッセージがありません</p>
+                    <p class="text-xs mt-1">最初のメッセージを送ってみましょう！</p>
+                </div>`;
+            return;
+        }
+
+        let lastDate = '';
+        msgs.forEach(msg => {
+            const isMe   = msg.sender_id.toString() === currentUserId.toString();
+            const msgDate = new Date(msg.created_at).toLocaleDateString('ja-JP', { month: 'long', day: 'numeric' });
+            if (msgDate !== lastDate) {
+                const div = document.createElement('div');
+                div.className = 'chat-date-divider';
+                div.textContent = msgDate;
+                container.appendChild(div);
+                lastDate = msgDate;
+            }
+            appendMessage(msg, isMe, false);
+        });
+        scrollChatBottom();
+    }
+
+    function appendMessage(msg, isMe, doScroll = true) {
+        const container = document.getElementById('chatMessages');
+        const empty = container.querySelector('.text-center');
+        if (empty) empty.remove();
+
+        const time      = new Date(msg.created_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        const avatarSrc = isMe
+            ? (document.getElementById('avatarImg').src || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUserId}`)
+            : `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'chat-bubble-wrap';
+        wrap.innerHTML = `
+            <div class="chat-row ${isMe ? 'me' : ''}">
+                <img src="${avatarSrc}" class="chat-avatar-sm" alt="avatar">
+                <div>
+                    <div class="chat-bubble ${isMe ? 'me' : 'them'}">${escapeHtml(msg.content)}</div>
+                    <div class="chat-time ${isMe ? '' : 'them'}">${time}</div>
+                </div>
+            </div>`;
+        container.appendChild(wrap);
+        if (doScroll) scrollChatBottom();
+    }
+
+    async function sendMessage() {
+        const input   = document.getElementById('chatInput');
+        const content = input.value.trim();
+        if (!content || !chatPartnerId) return;
+        input.value = '';
+        input.style.height = 'auto';
+
+        const { error } = await sb.from('messages').insert({
+            sender_id:   currentUserId,
+            receiver_id: chatPartnerId,
+            content,
+        });
+        if (error) { console.error('send error:', error); alert('送信に失敗しました: ' + error.message); }
+    }
+
+    function scrollChatBottom() {
+        const el = document.getElementById('chatMessages');
+        if (el) el.scrollTop = el.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    }
+
+    // ===== ログアウト =====
+    async function handleLogout() {
+        await sb.auth.signOut();
+        showAuth();
+    }
+
+    // ===== UI切り替え =====
+    function showAuth() {
+        document.getElementById('authSection').classList.remove('hidden');
+        document.getElementById('mypageSection').classList.add('hidden');
+        document.getElementById('clientSection').classList.add('hidden');
+    }
+    function showMypage() {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('mypageSection').classList.remove('hidden');
+        document.getElementById('clientSection').classList.add('hidden');
+    }
+    function showClient() {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('mypageSection').classList.add('hidden');
+        document.getElementById('clientSection').classList.remove('hidden');
+    }
+
+    // ===== クライアントセクション切り替え =====
+    function switchClientSection(section, btn) {
+        document.querySelectorAll('#clientSection .section-tab').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('clientSectionThreads').classList.toggle('hidden',     section !== 'threads');
+        document.getElementById('clientSectionFavorites').classList.toggle('hidden',   section !== 'favorites');
+        document.getElementById('clientSectionClientChat').classList.toggle('hidden',  section !== 'clientChat');
+        if (section === 'clientChat') initClientChat();
+    }
+
+    // ===== クライアント マイページ読み込み =====
+    async function loadClientPage(user) {
+        showClient();
+        document.getElementById('clientEmail').textContent = user.email;
+        document.getElementById('headerEmail').textContent = user.email;
+
+        // usersテーブルから名前取得
+        const { data: uData } = await sb.from('users').select('name, avatar_url').eq('id', user.id).maybeSingle();
+        const name   = uData?.name   || user.email.split('@')[0];
+        const avatar = uData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
+        document.getElementById('clientName').textContent  = name;
+        document.getElementById('clientAvatarImg').src     = avatar;
+
+        // 相談中の編集者（自分がsender_idのメッセージのreceiver_idを集計）
+        const { data: sentMsgs } = await sb.from('messages')
+            .select('receiver_id').eq('sender_id', user.id);
+        const uniqueEditorIds = [...new Set((sentMsgs||[]).map(m => m.receiver_id))];
+        document.getElementById('clientStatThreads').textContent = uniqueEditorIds.length + '人';
+
+        // お気に入り（favorites テーブルから）
+        const { data: favs } = await sb.from('favorites')
+            .select('editor_id').eq('client_id', user.id);
+        document.getElementById('clientStatFavs').textContent = (favs||[]).length + '人';
+
+        // スレッドカード描画
+        await renderThreadList(user.id, uniqueEditorIds);
+
+        // お気に入りカード描画
+        await renderFavoriteList(user.id, (favs||[]).map(f => f.editor_id));
+
+        // open_chat パラメータ対応
+        const openChat = new URLSearchParams(location.search).get('open_chat');
+        if (openChat) {
+            const chatBtn = document.querySelector('#clientSection .section-tab:nth-child(3)');
+            if (chatBtn) {
+                setTimeout(() => {
+                    switchClientSection('clientChat', chatBtn);
+                    setTimeout(() => selectClientEditor(openChat), 800);
+                }, 400);
+            }
+        }
+    }
+
+    // ===== スレッド一覧描画 =====
+    async function renderThreadList(userId, editorIds) {
+        const listEl = document.getElementById('threadList');
+        if (editorIds.length === 0) return;
+
+        // 編集者情報を取得
+        const { data: editors } = await sb.from('editors').select('id, name, image_url, price')
+            .in('id', editorIds);
+        if (!editors || editors.length === 0) return;
+
+        // 各編集者の最新メッセージを取得
+        const { data: allMsgs } = await sb.from('messages')
+            .select('receiver_id, content, created_at')
+            .eq('sender_id', userId)
+            .order('created_at', { ascending: false });
+
+        const latestMap = {};
+        (allMsgs || []).forEach(m => {
+            if (!latestMap[m.receiver_id]) latestMap[m.receiver_id] = m;
+        });
+
+        listEl.innerHTML = editors.map(e => {
+            const latest  = latestMap[e.id];
+            const preview = latest ? latest.content.split('\n').filter(l => l.trim()).slice(-1)[0] || '' : '';
+            const timeStr = latest ? new Date(latest.created_at).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' }) : '';
+            const avatar  = e.image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(e.name)}`;
+            return `
+            <div class="thread-card flex items-center gap-3 mb-3" onclick="openThreadChat('${e.id}', '${(e.name||'').replace(/'/g,'')}')" >
+                <img src="${avatar}" class="w-12 h-12 rounded-2xl object-cover flex-shrink-0" alt="">
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-center mb-0.5">
+                        <span class="font-black text-slate-800 text-sm truncate">${e.name}</span>
+                        <span class="text-xs text-slate-400 flex-shrink-0 ml-2">${timeStr}</span>
+                    </div>
+                    <div class="text-xs text-slate-500 truncate">${preview.slice(0, 60)}</div>
+                    ${e.price ? `<span class="text-xs text-cyan-600 font-bold">${e.price}</span>` : ''}
+                </div>
+                <div class="w-8 h-8 gradient-btn rounded-xl flex items-center justify-center text-white text-xs flex-shrink-0">💬</div>
+            </div>`;
+        }).join('');
+    }
+
+    // ===== お気に入り描画 =====
+    async function renderFavoriteList(userId, editorIds) {
+        const listEl = document.getElementById('favoriteList');
+        if (editorIds.length === 0) return;
+
+        const { data: editors } = await sb.from('editors').select('id, name, image_url, price, tools')
+            .in('id', editorIds);
+        if (!editors || editors.length === 0) return;
+
+        listEl.innerHTML = `<div class="grid grid-cols-1 gap-3">` + editors.map(e => {
+            const avatar = e.image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(e.name)}`;
+            const tools  = Array.isArray(e.tools) ? e.tools.slice(0, 3).join(' · ') : '';
+            return `
+            <div class="fav-editor-card flex items-center gap-4">
+                <img src="${avatar}" class="w-14 h-14 rounded-2xl object-cover flex-shrink-0" alt="">
+                <div class="flex-1 min-w-0">
+                    <div class="font-black text-slate-800">${e.name}</div>
+                    ${tools ? `<div class="text-xs text-slate-400 mt-0.5">${tools}</div>` : ''}
+                    ${e.price ? `<div class="text-sm font-black text-cyan-600 mt-1">${e.price}</div>` : ''}
+                </div>
+                <div class="flex flex-col gap-2">
+                    <button onclick="removeFavorite('${e.id}')" class="text-xs text-pink-400 hover:text-pink-600 font-bold border-2 border-pink-200 px-3 py-1.5 rounded-xl hover:border-pink-400 transition-all">❤️ 解除</button>
+                    <button onclick="goToRequest('${e.id}','${(e.name||'').replace(/'/g,'')}','')" class="text-xs gradient-btn text-white px-3 py-1.5 rounded-xl font-bold">相談する</button>
+                </div>
+            </div>`;
+        }).join('') + `</div>`;
+    }
+
+    function goToRequest(editorId, editorName, editorAvatar) {
+        const p = new URLSearchParams({ editor_id: editorId, editor_name: editorName, editor_avatar: editorAvatar });
+        window.location.href = 'request.html?' + p.toString();
+    }
+
+    async function removeFavorite(editorId) {
+        const { data: { user } } = await sb.auth.getUser();
+        await sb.from('favorites').delete().eq('client_id', user.id).eq('editor_id', editorId);
+        await loadClientPage(user);
+    }
+
+    function openThreadChat(editorId, editorName) {
+        const chatBtn = document.querySelector('#clientSection .section-tab:nth-child(3)');
+        if (chatBtn) {
+            switchClientSection('clientChat', chatBtn);
+            setTimeout(() => selectClientEditor(editorId), 400);
+        }
+    }
+
+    // ===== クライアント用チャット =====
+    let clientChatPartnerId = null;
+    let clientChatSub       = null;
+    let clientUserId        = null;
+
+    async function initClientChat() {
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+        clientUserId = user.id;
+
+        // 自分がsenderのreceiver（編集者）一覧
+        const { data: msgs } = await sb.from('messages')
+            .select('receiver_id').eq('sender_id', user.id);
+        const ids = [...new Set((msgs||[]).map(m => m.receiver_id))];
+        const sidebar = document.getElementById('clientEditorSidebar');
+        if (ids.length === 0) { sidebar.innerHTML = `<div class="text-center py-6 text-slate-300 text-xs"><div class="text-2xl mb-1">📭</div><p>相談中の編集者なし</p></div>`; return; }
+
+        const { data: editors } = await sb.from('editors').select('id, name, image_url').in('id', ids);
+        sidebar.innerHTML = '';
+        (editors||[]).forEach(e => {
+            const avatar = e.image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(e.name)}`;
+            const btn = document.createElement('button');
+            btn.className = 'w-full flex items-center gap-2.5 px-3 py-3 hover:bg-cyan-50 transition-colors text-left border-b border-slate-100';
+            btn.dataset.editorId = e.id;
+            btn.innerHTML = `<img src="${avatar}" class="w-8 h-8 rounded-xl object-cover flex-shrink-0"><span class="text-xs font-black text-slate-700 truncate">${e.name}</span>`;
+            btn.onclick = () => selectClientEditor(e.id, btn);
+            sidebar.appendChild(btn);
+        });
+    }
+
+    async function selectClientEditor(editorId, activeBtn = null) {
+        clientChatPartnerId = editorId;
+        document.querySelectorAll('#clientEditorSidebar button').forEach(b => b.classList.remove('bg-cyan-100'));
+        if (activeBtn) activeBtn.classList.add('bg-cyan-100');
+        else {
+            const b = document.querySelector(`#clientEditorSidebar button[data-editor-id="${editorId}"]`);
+            if (b) b.classList.add('bg-cyan-100');
+        }
+
+        if (clientChatSub) { clientChatSub.unsubscribe(); clientChatSub = null; }
+
+        const { data: e } = await sb.from('editors').select('name').filter('id::text','eq',editorId).maybeSingle();
+        document.getElementById('clientChatTitle').textContent = (e?.name || '編集者') + ' との会話';
+
+        await loadClientMessages();
+
+        clientChatSub = sb.channel('client-room-' + [clientUserId, editorId].sort().join('-'))
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+                const msg = payload.new;
+                const sid = msg.sender_id.toString();
+                const rid = msg.receiver_id.toString();
+                const me  = clientUserId.toString();
+                const pt  = clientChatPartnerId.toString();
+                if ((sid===me&&rid===pt)||(sid===pt&&rid===me)) appendClientMessage(msg, sid===me);
+            }).subscribe();
+    }
+
+    async function loadClientMessages() {
+        const { data: msgs } = await sb.from('messages').select('*')
+            .or(`and(sender_id.eq.${clientUserId},receiver_id.eq.${clientChatPartnerId}),and(sender_id.eq.${clientChatPartnerId},receiver_id.eq.${clientUserId})`)
+            .order('created_at', { ascending: true });
+
+        const container = document.getElementById('clientChatMessages');
+        container.innerHTML = '';
+        if (!msgs || msgs.length === 0) {
+            container.innerHTML = `<div class="text-center py-10 text-slate-300"><div class="text-3xl mb-2">✉️</div><p class="text-sm font-bold">まだメッセージがありません</p></div>`;
+            return;
+        }
+        let lastDate = '';
+        msgs.forEach(msg => {
+            const isMe = msg.sender_id.toString() === clientUserId.toString();
+            const d = new Date(msg.created_at).toLocaleDateString('ja-JP',{month:'long',day:'numeric'});
+            if (d !== lastDate) {
+                const div = document.createElement('div');
+                div.className = 'chat-date-divider'; div.textContent = d;
+                container.appendChild(div); lastDate = d;
+            }
+            appendClientMessage(msg, isMe, false);
+        });
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function appendClientMessage(msg, isMe, doScroll = true) {
+        const container = document.getElementById('clientChatMessages');
+        const empty = container.querySelector('.text-center');
+        if (empty) empty.remove();
+        const time = new Date(msg.created_at).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'});
+        const avatarSrc = isMe
+            ? (document.getElementById('clientAvatarImg').src || '')
+            : `https://api.dicebear.com/7.x/avataaars/svg?seed=${msg.sender_id}`;
+        const wrap = document.createElement('div');
+        wrap.className = 'chat-bubble-wrap';
+        wrap.innerHTML = `<div class="chat-row ${isMe?'me':''}"><img src="${avatarSrc}" class="chat-avatar-sm" alt=""><div><div class="chat-bubble ${isMe?'me':'them'}">${escapeHtml(msg.content)}</div><div class="chat-time ${isMe?'':'them'}">${time}</div></div></div>`;
+        container.appendChild(wrap);
+        if (doScroll) container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendClientMessage() {
+        const input   = document.getElementById('clientChatInput');
+        const content = input.value.trim();
+        if (!content || !clientChatPartnerId) return;
+        input.value = ''; input.style.height = 'auto';
+        const { error } = await sb.from('messages').insert({ sender_id: clientUserId, receiver_id: clientChatPartnerId, content });
+        if (error) alert('送信失敗: ' + error.message);
+    }
+</script>
+</body>
+</html>
