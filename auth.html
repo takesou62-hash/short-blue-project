@@ -606,7 +606,23 @@
                         <input type="file" id="clientAvatarFile" accept="image/*" class="hidden" onchange="uploadClientAvatar(event)">
                     </div>
                     <div id="clientAvatarMsg" class="hidden text-xs font-bold px-3 py-1.5 rounded-xl mb-2"></div>
-                    <h2 class="text-xl font-black text-slate-800 mt-1" id="clientName">読み込み中...</h2>
+                    <!-- 名前（クリックで編集） -->
+                    <div class="mt-1 relative group">
+                        <h2 class="text-xl font-black text-slate-800 cursor-pointer hover:text-cyan-600 transition-colors" id="clientName"
+                            onclick="startEditClientName()" title="クリックして名前を変更">読み込み中...</h2>
+                        <div id="clientNameEdit" class="hidden mt-2">
+                            <input id="clientNameInput" type="text" placeholder="表示名を入力"
+                                class="w-full px-3 py-2 border-2 border-cyan-300 rounded-xl text-sm font-bold outline-none focus:border-cyan-500 text-center"
+                                onkeydown="if(event.key==='Enter') saveClientName(); if(event.key==='Escape') cancelEditClientName();">
+                            <div class="flex gap-2 mt-2">
+                                <button onclick="saveClientName()"
+                                    class="flex-1 text-xs font-black text-white gradient-btn py-1.5 rounded-lg">保存</button>
+                                <button onclick="cancelEditClientName()"
+                                    class="flex-1 text-xs font-black text-slate-400 border border-slate-200 py-1.5 rounded-lg hover:bg-slate-50">キャンセル</button>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-300 mt-0.5 group-hover:text-cyan-300 transition-colors">✏️ クリックして名前を変更</p>
+                    </div>
                     <p class="text-cyan-500 font-bold text-sm mt-1" id="clientEmail"></p>
                     <span class="inline-block mt-2 px-3 py-1 bg-cyan-100 text-cyan-700 text-xs font-black rounded-full">🎬 クリエイター</span>
                     <button onclick="handleLogout()"
@@ -1645,50 +1661,71 @@
         document.getElementById('clientSectionThreads').classList.toggle('hidden',     section !== 'threads');
         document.getElementById('clientSectionFavorites').classList.toggle('hidden',   section !== 'favorites');
         document.getElementById('clientSectionClientChat').classList.toggle('hidden',  section !== 'clientChat');
-        if (section === 'clientChat') initClientChat();
     }
 
-    // ===== クライアント マイページ読み込み =====
+    // ===== クリエイター マイページ読み込み =====
+    let clientCurrentUserId = null;
+
     async function loadClientPage(user) {
         showClient();
+        clientCurrentUserId = user.id;
+        clientUserId = user.id;
+
         document.getElementById('clientEmail').textContent = user.email;
         document.getElementById('headerEmail').textContent = user.email;
 
-        // usersテーブルから名前取得
         const { data: uData } = await sb.from('users').select('name, avatar_url').eq('id', user.id).maybeSingle();
         const name   = uData?.name   || user.email.split('@')[0];
         const avatar = uData?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`;
         document.getElementById('clientName').textContent  = name;
         document.getElementById('clientAvatarImg').src     = avatar;
+        avatarCache[user.id] = avatar;
 
-        // 相談中の編集者（自分がsender_idのメッセージのreceiver_idを集計）
         const { data: sentMsgs } = await sb.from('messages')
             .select('receiver_id').eq('sender_id', user.id);
         const uniqueEditorIds = [...new Set((sentMsgs||[]).map(m => m.receiver_id))];
         document.getElementById('clientStatThreads').textContent = uniqueEditorIds.length + '人';
 
-        // お気に入り（favorites テーブルから）
         const { data: favs } = await sb.from('favorites')
             .select('editor_id').eq('client_id', user.id);
-        document.getElementById('clientStatFavs').textContent = (favs||[]).length + '人';
+        const favEditorIdList = (favs||[]).map(f => f.editor_id);
+        document.getElementById('clientStatFavs').textContent = favEditorIdList.length + '人';
 
-        // スレッドカード描画
         await renderThreadList(user.id, uniqueEditorIds);
+        await renderFavoriteList(user.id, favEditorIdList);
+        await initClientChat();
 
-        // お気に入りカード描画
-        await renderFavoriteList(user.id, (favs||[]).map(f => f.editor_id));
-
-        // open_chat パラメータ対応
         const openChat = new URLSearchParams(location.search).get('open_chat');
         if (openChat) {
             const chatBtn = document.querySelector('#clientSection .section-tab:nth-child(3)');
             if (chatBtn) {
                 setTimeout(() => {
                     switchClientSection('clientChat', chatBtn);
-                    setTimeout(() => selectClientEditor(openChat), 800);
+                    setTimeout(() => selectClientEditor(openChat), 600);
                 }, 400);
             }
         }
+    }
+
+    // ===== クリエイター名前編集 =====
+    function startEditClientName() {
+        const current = document.getElementById('clientName').textContent;
+        document.getElementById('clientNameInput').value = current;
+        document.getElementById('clientNameEdit').classList.remove('hidden');
+        document.getElementById('clientNameInput').focus();
+    }
+    function cancelEditClientName() {
+        document.getElementById('clientNameEdit').classList.add('hidden');
+    }
+    async function saveClientName() {
+        const newName = document.getElementById('clientNameInput').value.trim();
+        if (!newName) return;
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+        const { error } = await sb.from('users').update({ name: newName }).eq('id', user.id);
+        if (error) { alert('保存失敗: ' + error.message); return; }
+        document.getElementById('clientName').textContent = newName;
+        document.getElementById('clientNameEdit').classList.add('hidden');
     }
 
     // ===== スレッド一覧描画 =====
